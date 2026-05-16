@@ -235,14 +235,41 @@ ipcMain.handle('folder:readFile', async (_e, filePath) => {
     const stat = fs.statSync(filePath)
     if (stat.isDirectory()) return `ERROR: Is a directory, not a file: ${filePath}`
 
-    // Only allow text files up to 100KB
+    const ext = path.extname(filePath).toLowerCase()
+
+    // ── PDF handling ───────────────────────────────────────────────
+    if (ext === '.pdf') {
+      const maxPdfSize = 20 * 1024 * 1024 // 20MB limit for PDFs
+      if (stat.size > maxPdfSize) return `ERROR: PDF too large (${(stat.size / 1024 / 1024).toFixed(1)}MB). Max: 20MB`
+
+      const dataBuffer = fs.readFileSync(filePath)
+      const { PDFParse } = require('pdf-parse')
+      const parser = new PDFParse({ data: dataBuffer, verbosity: 0 })
+      const pdfData = await parser.getText({})
+      const pageCount = pdfData.total || 1
+      const text = (pdfData.text || '').trim()
+
+      if (!text) return `[PDF: ${path.basename(filePath)}]\nPages: ${pageCount}\nContent: (empty — no extractable text)`
+
+      // Truncate very long text to 100KB to keep context manageable
+      const maxTextLen = 100 * 1024
+      const truncated = text.length > maxTextLen
+      const body = truncated ? text.slice(0, maxTextLen) + `\n\n... (text truncated, ${text.length - maxTextLen} chars omitted)` : text
+
+      return `[PDF: ${path.basename(filePath)}]\nPages: ${pageCount}\n\n${body}`
+    }
+
+    // ── Text file handling ─────────────────────────────────────────
     const maxSize = 100 * 1024
     if (stat.size > maxSize) return `ERROR: File too large (${(stat.size / 1024).toFixed(1)}KB). Max: 100KB`
 
     const content = fs.readFileSync(filePath, 'utf-8')
     return content
   } catch (e) {
-    return `READ FILE ERROR: ${e.message}`
+    // Distinguish PDF-specific errors from generic ones
+    const msg = e.message || String(e)
+    if (msg.toLowerCase().includes('pdf')) return `PDF PARSE ERROR: ${msg}`
+    return `READ FILE ERROR: ${msg}`
   }
 })
 

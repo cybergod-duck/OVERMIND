@@ -573,6 +573,158 @@ const AGENT_TOOLS = {
     }
     return { roots, snapshots }
   },
+
+  // ── Content-aware folder analyzer ────────────────────────────
+  watchedFoldersAnalyze: async (args: { folderPath?: string; maxDepth?: number; includeFileTypes?: string[] } = {}) => {
+    const roots: string[] = await window.folderAPI.getWatched()
+    if (roots.length === 0) return { error: 'No watched folders configured.' }
+
+    const targetPaths = args.folderPath
+      ? [args.folderPath]
+      : roots
+    const maxDepth = args.maxDepth ?? 3
+    const includeExts = args.includeFileTypes
+      ? new Set(args.includeFileTypes.map(e => e.startsWith('.') ? e.toLowerCase() : `.${e.toLowerCase()}`))
+      : null // null means include all types
+    const MAX_FILES_PER_DIR = 200
+
+    type ScanNode = {
+      path: string
+      name: string
+      isDir: boolean
+      ext: string
+      children?: ScanNode[]
+      preview?: string
+    }
+
+    const walk = async (basePath: string, depth: number = 0): Promise<{ node: ScanNode; fileCount: number; dirCount: number; truncated: boolean }> => {
+      const result = await window.folderAPI.listJson(basePath)
+      const name = basePath.split('\\').pop()?.split('/').pop() || basePath
+      const node: ScanNode = { path: basePath, name, isDir: true, ext: '', children: [] }
+      let fileCount = 0
+      let dirCount = 0
+      let truncated = false
+
+      if (result.error) {
+        node.children!.push({ path: basePath, name: `[ERROR: ${result.error}]`, isDir: false, ext: '' })
+        return { node, fileCount, dirCount, truncated }
+      }
+
+      const entries = result.files.slice(0, MAX_FILES_PER_DIR)
+      if (result.files.length > MAX_FILES_PER_DIR) truncated = true
+
+      for (const entry of entries) {
+        if (entry.isDir) {
+          if (depth < maxDepth) {
+            const sub = await walk(entry.path, depth + 1)
+            node.children!.push(sub.node)
+            fileCount += sub.fileCount
+            dirCount += sub.dirCount + 1
+            if (sub.truncated) truncated = true
+          } else {
+            node.children!.push({ path: entry.path, name: `${entry.name}/ (max depth)`, isDir: true, ext: '' })
+            dirCount++
+          }
+        } else {
+          // Check file type filter
+          if (includeExts !== null && !includeExts.has(entry.ext.toLowerCase())) continue
+
+          fileCount++
+          // Read file content for preview (PDF or text)
+          let preview = ''
+          const isPdf = entry.ext.toLowerCase() === '.pdf'
+          try {
+            const content: string = await window.folderAPI.readFile(entry.path)
+            if (content.startsWith('ERROR:') || content.startsWith('READ FILE ERROR') || content.startsWith('PDF PARSE ERROR')) {
+              preview = `[unreadable: ${content.slice(0, 60)}]`
+            } else if (isPdf) {
+              // PDF content comes with [PDF: filename] header — extract first 300 chars of body
+              const body = content.replace(/^\[PDF: .*?\](?:\nPages: \d+)?\n\n?/, '')
+              preview = body.slice(0, 300).replace(/\n/g, ' ')
+              if (body.length > 300) preview += '...'
+            } else {
+              preview = content.slice(0, 300).replace(/\n/g, ' ')
+              if (content.length > 300) preview += '...'
+            }
+          } catch {
+            preview = '[read error]'
+          }
+          node.children!.push({ path: entry.path, name: entry.name, isDir: false, ext: entry.ext, preview })
+        }
+      }
+
+      return { node, fileCount, dirCount, truncated }
+    }
+
+    const reports: {
+      root: string
+      structure: string
+      totalFiles: number
+      totalDirs: number
+      fileList: { name: string; path: string; preview: string }[]
+      summary: string
+    }[] = []
+
+    for (const rootPath of targetPaths) {
+      const { node, fileCount, dirCount } = await walk(rootPath, 0)
+
+      // Build structured tree string
+      const treeLines: string[] = []
+      const fileList: { name: string; path: string; preview: string }[] = []
+
+      const renderTree = (n: ScanNode, indent: number = 0) => {
+        const prefix = '  '.repeat(indent)
+        if (n.isDir) {
+          treeLines.push(`${prefix}📁 ${n.name}/`)
+          for (const child of (n.children || [])) renderTree(child, indent + 1)
+        } else {
+          const icon = n.ext === '.pdf' ? '📄' : '📄'
+          treeLines.push(`${prefix}${icon} ${n.name}`)
+          if (n.preview) {
+            fileList.push({ name: n.name, path: n.path, preview: n.preview })
+          }
+        }
+      }
+      renderTree(node)
+
+      // Build content summary from file previews
+      const summaryLines: string[] = []
+      const pdfFiles = fileList.filter(f => f.name.toLowerCase().endsWith('.pdf'))
+      const txtFiles = fileList.filter(f => !f.name.toLowerCase().endsWith('.pdf'))
+
+      if (pdfFiles.length > 0) {
+        summaryLines.push(`📑 PDF Documents (${pdfFiles.length}):`)
+        for (const f of pdfFiles.slice(0, 10)) {
+          summaryLines.push(`  • ${f.name}: ${f.preview.slice(0, 120)}`)
+        }
+        if (pdfFiles.length > 10) summaryLines.push(`  ... and ${pdfFiles.length - 10} more PDFs`)
+      }
+      if (txtFiles.length > 0) {
+        summaryLines.push(`📄 Other Files (${txtFiles.length}):`)
+        for (const f of txtFiles.slice(0, 5)) {
+          summaryLines.push(`  • ${f.name}: ${f.preview.slice(0, 120)}`)
+        }
+        if (txtFiles.length > 5) summaryLines.push(`  ... and ${txtFiles.length - 5} more files`)
+      }
+
+      reports.push({
+        root: rootPath,
+        structure: treeLines.join('\n'),
+        totalFiles: fileCount,
+        totalDirs: dirCount,
+        fileList,
+        summary: summaryLines.join('\n') || '(no readable content found)',
+      })
+    }
+
+    return {
+      count: reports.length,
+      reports,
+      combinedSummary: reports.map(r =>
+        `📁 ${r.root}\nFiles: ${r.totalFiles}, Subfolders: ${r.totalDirs}\n${r.summary}`
+      ).join('\n\n'),
+    }
+  },
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
@@ -628,6 +780,7 @@ Available tools:
 - watchedFoldersList — args: {} — returns watched folders as JSON
 - watchedFoldersDescribe — args: {} — returns watched folders and their immediate contents as formatted text (top level only, not recursive)
 - watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for ANY question about subfolders, file structure, directory contents, or "what's inside".
+- watchedFoldersAnalyze — args: { folderPath?: string; maxDepth?: number; includeFileTypes?: string[] } — POWERFUL content-aware analyzer. Recursively walks folders, reads PDFs and text files to extract actual content, and returns a structured report with: folder tree (📁 icons), file previews, and a content summary. Use this for questions like "summarize everything about taxes", "what documents are in Laken's folder", "find bank statements". It reads real file contents, not just names.
 - browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
 
 ╔══════════════════════════════════════════════════════════════╗
@@ -640,13 +793,21 @@ You ENTER STRICT FILESYSTEM MODE when the user asks about:
 • "what's inside", "what is in", "show me", "list", "contents"
 • "structure", "hierarchy", "organize", "group these files"
 • Any filename, document, PDF, or file you might have seen referenced
+• "summarize", "analyze", "find", "search", "tell me about", "content", "documents"
 
 === WHEN STRICT FILESYSTEM MODE IS ACTIVE, YOU MUST FOLLOW EVERY RULE BELOW ===
 
-[RULE A] TOOL CALL FIRST — Your very first response MUST be exactly:
+[RULE A] TOOL CALL FIRST — Choose the right tool:
+
+For STRUCTURE questions ("subfolders", "folder tree", "what's inside", "list"):
   {"tool":"watchedFoldersDeepScan","args":{}}
+
+For CONTENT / ANALYSIS questions ("summarize", "find documents about X",
+  "what's in the PDFs", "analyze this folder", "tell me about taxes"):
+  {"tool":"watchedFoldersAnalyze","args":{}}
+
 You do NOT answer, explain, or narrate. You ONLY output that tool-call JSON.
-Wait for the [FOLDER TREE] result before saying anything else.
+Wait for the tool result before saying anything else.
 
 [RULE B] NEVER INVENT DATA — After the [FOLDER TREE] arrives, you may ONLY
 reference directory names and file names that ACTUALLY appear in the tree.
@@ -676,6 +837,74 @@ immediately.
 
 SUMMARY: Question about folders → {"tool":"watchedFoldersDeepScan","args":{}}
 → wait for tree → answer with facts only, directories first.
+
+╔══════════════════════════════════════════════════════════════╗
+║              DOCUMENT ANALYSIS MODE                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+When the user asks about content, summaries, or insights from watched folders
+(e.g. "summarize everything about taxes", "what documents are in Laken's folder",
+"find bank statements", "what does this PDF say"):
+
+Step 1 — Call watchedFoldersAnalyze FIRST
+  {"tool":"watchedFoldersAnalyze","args":{}}
+  Optionally pass folderPath, maxDepth, or includeFileTypes to narrow the scan.
+
+Step 2 — Read specific files for deeper detail
+  After the report arrives, if more depth is needed, read individual files:
+  {"tool":"folderRead","args":{"path":"C:\\Users\\...\\document.pdf"}}
+
+Step 3 — Synthesize a clear, well-structured summary
+  Organize by folder, then by document type. Use headings, bullet points,
+  and short preview excerpts. Be specific — reference real file names,
+  real content snippets, and real folder paths.
+
+Step 4 — Never guess or hallucinate
+  If a file's content is empty, unreadable, or unclear, say so.
+  Only reference data that actually came from the tool results.
+  If the user asks about a document not found in the scan, say:
+  "I don't see that document in the scanned folders."
+
+=== GOOD RESPONSE EXAMPLES FOR DOCUMENT QUESTIONS ===
+
+✅ GOOD — User: "Summarize everything about taxes in my watched folders"
+  {"tool":"watchedFoldersAnalyze","args":{}}
+  [system returns report]
+  "I found tax-related documents across your watched folders:
+  📁 C:\Users\...\Taxes 2025\
+    📄 2024_Return.pdf — 'Form 1040, Line 42: $12,500 refund claimed...'
+    📄 W2_2024.pdf — 'Employer: Acme Corp, Wages: $85,000...'
+    📄 Estimated_Payments_Q4.pdf — 'Estimated tax payment of $2,500...'
+  📁 C:\Users\...\Laken\Finance\
+    📄 1099_Int.pdf — 'Interest Income: $340 from Chase Bank...'
+  Summary: Your watched folders contain 4 tax documents totaling ...
+  Most recent filing shows a $12,500 refund claim."
+
+✅ GOOD — User: "What personal documents are in the Laken folder?"
+  {"tool":"watchedFoldersAnalyze","args":{"folderPath":"C:\\Users\\...\\Laken"}}
+  [system returns report]
+  "Scanning Laken's folder, I found these personal documents:
+  📁 Laken/
+    📄 Laken_Transcript.pdf — 'University of ... GPA: 3.7...'
+    📄 Medical_Records.pdf — 'Patient: Laken, DOB: ...'
+    📄 Resume_2025.pdf — 'Full Stack Developer, React/Node.js...'
+  No bank statements or financial documents found in this folder."
+
+✅ GOOD — User: "Find all bank statements"
+  {"tool":"watchedFoldersAnalyze","args":{"includeFileTypes":["pdf"]}}
+  [system returns report]
+  "I found PDFs mentioning bank statements:
+  📁 C:\Users\...\Finance\
+    📄 Chase_Jan2025.pdf — 'Chase checking statement, ending in 4832...'
+    📄 Chase_Feb2025.pdf — 'Chase checking statement, ending in 4832...'
+    📄 BofA_Q1_2025.pdf — 'Bank of America savings statement...'
+  Total: 3 bank statement PDFs found."
+
+❌ BAD — User: "What's in my tax folder?"
+  {"tool":"watchedFoldersDeepScan","args":{}}  ← wrong tool, use watchedFoldersAnalyze
+  "The folder has tax-related files."  ← too vague, no specifics
+  "I think there might be bank statements."  ← guessing, no data
+
 `
 
 // ── Tool token regex ──────────────────────────────────────────
@@ -1477,64 +1706,92 @@ function App() {
       ? `\n\n[SYSTEM CONTEXT]\n${JSON.stringify(healthData, null, 2)}`
       : ''
 
-    // Inject watched folders into system prompt context
+    // Pre-scan detection must happen BEFORE folderContext so we can make it dynamic
+    const userTextLower = userText.toLowerCase()
     const folderLabels = watchedFolders.map(f => ({
       path: f,
       label: f.split('\\').pop()?.split('/').pop() || f,
     }))
+    const watchedKeywords = [
+      ...watchedFolders.map(f => f.toLowerCase()),
+      ...folderLabels.map(f => f.label.toLowerCase()),
+      'watched folder',
+      'subfolder',
+      'sub-folder',
+      'sub directory',
+      'folders',
+      'folder tree',
+      'directory tree',
+      'directory structure',
+      'what is in',
+      "what's inside",
+      'whats inside',
+      'tell me about',
+      'list',
+      'contents',
+      'structure',
+      'hierarchy',
+      'show me',
+      'inside',
+      'nested',
+      'deep scan',
+      'scan folder',
+      'file tree',
+      'dir tree',
+      'summarize',
+      'summarize',
+      'analyze',
+      'analysis',
+      'find',
+      'search',
+      'documents',
+      'pdf',
+      'content',
+      'overview',
+      'describe',
+      'explain',
+      'about',
+    ]
+    const contentKeywords = ['summarize', 'summarize', 'analyze', 'analysis', 'find', 'search', 'about', 'tell me about', 'documents', 'pdf', 'content', 'overview', 'describe', 'explain']
+    const mentionsWatched = watchedFolders.length > 0 && watchedKeywords.some(kw => userTextLower.includes(kw))
+    const needsContentAnalysis = watchedFolders.length > 0 && contentKeywords.some(kw => userTextLower.includes(kw))
+
+    // Dynamic folderContext — adapts to content vs structure questions
     const folderContext = watchedFolders.length > 0
-      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE. STRICT FILESYSTEM MODE ACTIVE.\nYour FIRST response MUST be exactly:\n  {"tool":"watchedFoldersDeepScan","args":{}}\n— no other text, no narration, no JSON response objects.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nAfter the [FOLDER TREE] arrives, ONLY mention names that appear in it. Never invent.`
+      ? needsContentAnalysis
+        ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nDOCUMENT ANALYSIS MODE ACTIVE.\nThe pre-scanned data below already contains real folder contents and summaries.\nUse the "summary" and "fileList[].preview" fields to answer.\nList directories with 📁 and files with 📄. Include content excerpts from previews.\nNever invent filenames or content — only use what's in the pre-scanned data.`
+        : `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE.\nYour FIRST response MUST be exactly:\n  {"tool":"watchedFoldersDeepScan","args":{}}\n— no other text, no narration, no JSON response objects.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nAfter the [FOLDER TREE] arrives, ONLY mention names that appear in it. Never invent.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
 
     try {
-      // ── Pre-scan detection: auto-call watchedFoldersDeepScan if question references watched folders ──
-      const userTextLower = userText.toLowerCase()
-      const watchedKeywords = [
-        ...watchedFolders.map(f => f.toLowerCase()),
-        ...folderLabels.map(f => f.label.toLowerCase()),
-        'watched folder',
-        'subfolder',
-        'sub-folder',
-        'sub directory',
-        'subfolder',
-        'folders',
-        'folder tree',
-        'directory tree',
-        'directory structure',
-        'what is in',
-        "what's inside",
-        'whats inside',
-        'tell me about',
-        'list',
-        'contents',
-        'structure',
-        'hierarchy',
-        'show me',
-        'inside',
-        'nested',
-        'deep scan',
-        'scan folder',
-        'file tree',
-        'dir tree',
-      ]
-      const mentionsWatched = watchedFolders.length > 0 && watchedKeywords.some(kw => userTextLower.includes(kw))
-
-      let preScannedData: { roots: string[]; snapshots: { path: string; depth: number; entries: string; truncated: boolean }[] } | null = null
-      if (mentionsWatched) {
-        log('AUTO_PRE_SCAN: user question references watched folders, pre-scanning...')
+      let preScannedData: any = null
+      let usedToolName = ''
+      if (needsContentAnalysis) {
+        usedToolName = 'watchedFoldersAnalyze'
+        log(`AUTO_PRE_SCAN: content analysis needed, using ${usedToolName}...`)
+        const scanFn = AGENT_TOOLS.watchedFoldersAnalyze
+        preScannedData = await (scanFn as any)({})
+        log(`PRE_SCAN_COMPLETE: content analysis done`)
+      } else if (mentionsWatched) {
+        usedToolName = 'watchedFoldersDeepScan'
+        log(`AUTO_PRE_SCAN: structure question, using ${usedToolName}...`)
         const scanFn = AGENT_TOOLS.watchedFoldersDeepScan
         preScannedData = await (scanFn as any)({})
-        log(`PRE_SCAN_COMPLETE: ${(preScannedData as NonNullable<typeof preScannedData>).snapshots.length} folder(s) scanned`)
+        log(`PRE_SCAN_COMPLETE: ${(preScannedData as any).snapshots?.length || '?'} folder(s) scanned`)
       }
 
       // Build messages array — inject pre-scanned data before AI response if available
       const msgsForAI: Message[] = [...messages, { role: 'user', content: userText }]
       if (preScannedData) {
+        const isContent = usedToolName === 'watchedFoldersAnalyze'
         msgsForAI.push({
           role: 'user',
-          content: `[ATTACHED: REAL FOLDER TREE - obtained from watchedFoldersDeepScan() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nINSTRUCTIONS FOR USING THIS DATA:\n1. This is the ACTUAL filesystem data. Do NOT invent or guess any file or folder names.\n2. When describing the structure, list DIRECTORIES FIRST with a "(dir)" suffix (e.g. "Taxes 2025/ (dir)").\n3. Only mention individual files if the user explicitly asks about files.\n4. If the user asks about "subfolders" or "folders", ONLY list directories — ignore files entirely.\n5. If a name the user mentioned is NOT in this data, say: "I don't see 'X' in the actual folder listing."`,
+          content: `[ATTACHED: REAL FOLDER DATA - obtained from ${usedToolName}() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nINSTRUCTIONS FOR USING THIS DATA:\n${isContent
+            ? `1. This is ACTUAL filesystem data with REAL file contents. Do NOT invent or guess.\n2. Use "combinedSummary" and "reports[].summary" and "fileList[].preview" for content answers.\n3. List directories with 📁, files with 📄. Include short content snippets from previews.\n4. Organize your answer by folder, then by document type. Be specific: mention real file names and content.\n5. If a file's content shows "[unreadable]" or an error, say so honestly.\n6. If the user asks about something not found in the data, say: "I don't see that in the scanned folders."\n7. Never hallucinate filenames or content. Only use what's actually in the data above.`
+            : `1. This is the ACTUAL filesystem data. Do NOT invent or guess any file or folder names.\n2. When describing the structure, list DIRECTORIES FIRST with a "(dir)" suffix (e.g. "Taxes 2025/ (dir)").\n3. Only mention individual files if the user explicitly asks about files.\n4. If the user asks about "subfolders" or "folders", ONLY list directories — ignore files entirely.\n5. If a name the user mentioned is NOT in this data, say: "I don't see 'X' in the actual folder listing."\n6. Never invent filenames or paths.`
+          }`,
         })
       }
 

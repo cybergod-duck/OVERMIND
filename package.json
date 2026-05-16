@@ -29,6 +29,7 @@
   "dependencies": {
     "electron-store": "^6.0.1",
     "lucide-react": "^0.378.0",
+    "pdf-parse": "^2.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "systeminformation": "^5.25.11",
