@@ -513,6 +513,15 @@ const AGENT_TOOLS = {
     }
     return { folders }
   },
+  watchedFoldersDescribe: async () => {
+    const paths: string[] = await window.folderAPI.getWatched()
+    const results: { path: string; files: string }[] = []
+    for (const folderPath of paths) {
+      const files = await window.folderAPI.list(folderPath)
+      results.push({ path: folderPath, files })
+    }
+    return { folders: results }
+  },
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
@@ -533,6 +542,7 @@ Available tools:
 - runPrivacyScan() — run a full privacy scan (startup items, hosts file, processes, DNS config)
 - privacyFix({ actionId: string }) — execute a remediation action by ID (obtained from a prior privacy scan result). Actions include: opening the startup folder, opening a registry key, killing a suspicious process, opening the hosts file, opening DNS settings, or backing up the hosts file. Always run runPrivacyScan() first, THEN use privacyFix() with one of the recommended action IDs from the scan findings.
 - watchedFoldersList() — returns the list of configured watched folders and their contents as structured JSON (name, path, isDir, ext for each file). When the user asks "what is currently in your watched folders?" ALWAYS call watchedFoldersList(), do NOT ask the user for a path. Only ask for a specific path if the user explicitly refers to a folder that is NOT in the watched list.
+- watchedFoldersDescribe() — returns all watched folders and their immediate contents as formatted text. When the user asks about "watched folders" or mentions a specific watched folder label (e.g. "Laken's Files"), ALWAYS call watchedFoldersDescribe() first, then summarize the results in plain natural language. Do NOT tell the user to manually use folderList/folderRead tools. If the user mentions a specific folder label that matches one of the watched folders, focus your description on that folder first, then mention others if useful.
 - browserAction({ action, selector?, text?, scrollY?, url? }) — request the browser extension to click/type/scroll/navigate/scrape in the active tab (requires browser bridge connection)
 `
 
@@ -1283,7 +1293,7 @@ function App() {
 
     // Inject watched folders into system prompt context
     const folderContext = watchedFolders.length > 0
-      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to the following folders:\n${watchedFolders.map(f => `  - ${f}`).join('\n')}\nUse folderList and folderRead tools to explore these folders when the user asks about their files.`
+      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to the following folders:\n${watchedFolders.map(f => `  - ${f} (label: "${f.split('\\').pop()?.split('/').pop() || f}")`).join('\n')}\n\nWhen the user asks about these folders — for example "what is in Laken's Files" or "what can you tell me about my watched folders" — ALWAYS call watchedFoldersDescribe() automatically. Do NOT tell the user to manually use folderList/folderRead. After watchedFoldersDescribe() returns, summarize the contents in natural language like:\n\n"I see N watched folder(s): [path]. Inside [label] there are: X subfolders, Y top-level files. The files include: [names]"\n\nIf the user mentions a specific folder label (e.g. "Laken's Files"), focus your description on that folder first, then mention others if relevant.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
