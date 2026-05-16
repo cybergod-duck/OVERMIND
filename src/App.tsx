@@ -646,10 +646,29 @@ function parseToolTokens(text: string): ToolToken[] {
 
 function parseToolCall(text: string): { tool: string; args: any } | null {
   try {
-    const match = text.match(/\{[\s\S]*"tool"[\s\S]*\}/)
-    if (!match) return null
-    const parsed = JSON.parse(match[0])
-    if (parsed.tool && parsed.tool in AGENT_TOOLS) return parsed
+    // Scan character-by-character with brace-depth tracking to find the first
+    // complete, balanced JSON object that contains "tool" and is in AGENT_TOOLS.
+    // This avoids the greedy regex bug that grabs from first { to last },
+    // which breaks when the AI appends commentary text after the JSON.
+    let depth = 0
+    let start = -1
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i]
+      if (ch === '{') {
+        if (start === -1) start = i
+        depth++
+      } else if (ch === '}') {
+        depth--
+        if (depth === 0 && start !== -1) {
+          const candidate = text.slice(start, i + 1)
+          try {
+            const parsed = JSON.parse(candidate)
+            if (parsed.tool && parsed.tool in AGENT_TOOLS) return parsed
+          } catch { /* not valid JSON, try next balanced pair */ }
+          start = -1
+        }
+      }
+    }
     return null
   } catch { return null }
 }
