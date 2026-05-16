@@ -522,6 +522,57 @@ const AGENT_TOOLS = {
     }
     return { folders: results }
   },
+  watchedFoldersDeepScan: async () => {
+    const roots: string[] = await window.folderAPI.getWatched()
+    const MAX_DEPTH = 5
+    const MAX_FILES_PER_DIR = 500
+
+    const walk = async (base: string, depth: number = 0): Promise<{ path: string; depth: number; entries: string; truncated: boolean }> => {
+      const result = await window.folderAPI.listJson(base)
+      if (result.error) {
+        return { path: base, depth, entries: `[ERROR: ${result.error}]`, truncated: false }
+      }
+      // Build a formatted listing string
+      const lines: string[] = []
+      let truncated = false
+      const files = result.files.slice(0, MAX_FILES_PER_DIR)
+      if (result.files.length > MAX_FILES_PER_DIR) truncated = true
+
+      for (const f of files) {
+        const indent = '  '.repeat(depth + 1)
+        if (f.isDir) {
+          lines.push(`${indent}${f.name}/ (dir)`)
+        } else {
+          lines.push(`${indent}${f.name}`)
+        }
+      }
+      if (truncated) {
+        lines.push(`${'  '.repeat(depth + 1)}... (${result.files.length - MAX_FILES_PER_DIR} more entries truncated)`)
+      }
+
+      // Recurse into subdirectories
+      if (depth < MAX_DEPTH) {
+        for (const f of files) {
+          if (f.isDir) {
+            const sub = await walk(f.path, depth + 1)
+            lines.push(sub.entries)
+            if (sub.truncated) truncated = true
+          }
+        }
+      } else if (files.some(f => f.isDir)) {
+        lines.push(`${'  '.repeat(depth + 2)}... (max depth ${MAX_DEPTH} reached, deeper subfolders not scanned)`)
+      }
+
+      return { path: base, depth, entries: lines.join('\n'), truncated }
+    }
+
+    const snapshots: { path: string; depth: number; entries: string; truncated: boolean }[] = []
+    for (const root of roots) {
+      const snapshot = await walk(root, 0)
+      snapshots.push(snapshot)
+    }
+    return { roots, snapshots }
+  },
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
@@ -550,10 +601,26 @@ Available tools:
 - runPrivacyScan — args: {} — run a full privacy scan
 - privacyFix — args: { actionId: string } — execute remediation action
 - watchedFoldersList — args: {} — returns watched folders as JSON
-- watchedFoldersDescribe — args: {} — returns watched folders and their contents as formatted text
+- watchedFoldersDescribe — args: {} — returns watched folders and their immediate contents as formatted text (top level only, not recursive)
+- watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for any question about file structure, subfolders, or detailed contents.
 - browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
 
-Watched folders: When the user asks about "watched folders" or mentions a specific folder name or label (like "Laken's Files"), ALWAYS call watchedFoldersDescribe() immediately. Do NOT ask the user to use folderList/folderRead themselves. After the tool returns, summarize the contents in natural language. If the user named a specific folder, focus on that one first.
+## STRICT FILESYSTEM MODE
+
+For any question that mentions:
+- "watched folders"
+- a specific watched folder label (e.g. "Laken's Files")
+- subfolders, files, documents, or directory contents
+you enter STRICT FILESYSTEM MODE.
+
+In STRICT FILESYSTEM MODE:
+1. Your FIRST response MUST be exactly one of:
+   {"tool":"watchedFoldersDeepScan","args":{}}  — for structure/directory questions
+   {"tool":"folderRead","args":{"path":"..."}}  — for specific file content
+2. You must NOT answer in natural language or describe what you're about to do before the tool result comes back.
+3. After the [FOLDER TREE] result arrives, ONLY mention directory and file names that appear in it. You are FORBIDDEN from guessing or inventing folder names, file names, or contents.
+4. If you cannot find a name the user mentions, say "I don't see X in the actual folder listing" instead of speculating.
+5. For analysis questions ("group these files", "summarize", "reorganize"), use the real tree data to reason from — never hallucinate directories or documents.
 `
 
 // ── Tool token regex ──────────────────────────────────────────
@@ -1303,7 +1370,7 @@ function App() {
 
     // Inject watched folders into system prompt context
     const folderContext = watchedFolders.length > 0
-      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${watchedFolders.map(f => `  - ${f} (label: "${f.split('\\').pop()?.split('/').pop() || f}")`).join('\n')}\n\nWhen the user asks about these folders (e.g. "what is in Laken's Files"), your FIRST response must be exactly: {"tool":"watchedFoldersDescribe","args":{}} — no other text. After the tool result comes back, summarize the contents naturally. Focus on whichever folder the user specifically mentioned.`
+      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${watchedFolders.map(f => `  - ${f} (label: "${f.split('\\').pop()?.split('/').pop() || f}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE. When the user asks about these folders (e.g. "what is in Laken's Files", "name the subfolders", "analyze Laken's Files"), your FIRST response must be exactly: {"tool":"watchedFoldersDeepScan","args":{}} — no other text. After the [FOLDER TREE] result comes back, refer ONLY to actual names from that tree. Never invent or guess filenames.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
