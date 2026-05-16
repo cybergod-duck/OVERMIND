@@ -1073,23 +1073,23 @@ function App() {
         setMessages(prev => [...prev, { role: 'assistant', content: aiText }])
         log(`AI_RESPONSE: ${aiText.slice(0, 60)}...`)
 
-        // Legacy tool token parsing for lockboxTools (diagnose commands)
+        // Legacy tool token parsing — some tools need lockboxTools, PRIVACY_SCAN uses privacyAPI
         const tokens = parseToolTokens(aiText)
         for (const token of tokens) {
           log(`TOOL_TRIGGERED: ${token.type}`)
           try {
-            const tools = (window as any).lockboxTools
-            if (!tools) {
-              setMessages(prev => [...prev, { role: 'system', content: `TOOL_ERROR: lockboxTools not available` }])
-              continue
-            }
             let result: string
-            if (token.type === 'DIAGNOSE_NETWORK') {
-              result = await tools.diagnoseNetwork()
-            } else if (token.type === 'DIAGNOSE_SYSTEM') {
-              result = await tools.diagnoseSystem()
-            } else if (token.type === 'LIST_FOLDER') {
-              result = await tools.listFolder(token.path)
+            if (token.type === 'DIAGNOSE_NETWORK' || token.type === 'DIAGNOSE_SYSTEM' || token.type === 'LIST_FOLDER') {
+              const tools = (window as any).lockboxTools
+              if (!tools) {
+                result = 'TOOL_ERROR: lockboxTools not available'
+              } else if (token.type === 'DIAGNOSE_NETWORK') {
+                result = await tools.diagnoseNetwork()
+              } else if (token.type === 'DIAGNOSE_SYSTEM') {
+                result = await tools.diagnoseSystem()
+              } else {
+                result = await tools.listFolder((token as any).path)
+              }
             } else if (token.type === 'PRIVACY_SCAN') {
               if ((window as any).privacyAPI) {
                 const scanResult = await (window as any).privacyAPI.scanSummary()
@@ -1113,7 +1113,7 @@ function App() {
                 result = 'PRIVACY_SCAN_ERROR: privacyAPI not available'
               }
             } else {
-              result = await tools.diagnoseNetwork() // fallback
+              result = 'TOOL_ERROR: unknown token type'
             }
             setMessages(prev => [...prev, { role: 'system', content: `SYSTEM_DIAGNOSTIC_RESULT:\n${result}` }])
           } catch (err: any) {
