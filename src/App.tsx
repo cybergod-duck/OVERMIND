@@ -525,25 +525,35 @@ const AGENT_TOOLS = {
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
-## User-Facing Features
+## Tool Calling Rules
 
-You have access to the following system tools. When you need to use one, respond with ONLY a JSON block in this exact format and nothing else:
-{"tool":"<toolName>","args":{...}}
+You MUST call tools by outputting ONLY a single JSON object. No explanations, no backticks, no markdown, no extra text.
+
+Correct format:
+{"tool":"watchedFoldersDescribe","args":{}}
+
+Incorrect:
+"I will call watchedFoldersDescribe()..."  ← NEVER do this
+\`\`\`json{"tool":"watchedFoldersDescribe"}\`\`\`  ← NEVER use backticks
+
+Your entire response must be exactly the JSON object. The system will execute it and return the result, then you can respond naturally.
 
 Available tools:
-- ollamaPull({ model: string }) — pull/install an Ollama model
-- ollamaList() — list installed Ollama models
-- getHealth() — get system health (Ollama, RAM, platform)
-- killPort({ port: number }) — kill process using a port
-- writeEnv({ entries: Record<string,string> }) — write key-value pairs to .env
-- runCommand({ cmd: string }) — run an allowlisted command
-- folderList({ path: string }) — list contents of a directory (returns formatted listing)
-- folderRead({ path: string }) — read a text file's contents (max 100KB)
-- runPrivacyScan() — run a full privacy scan (startup items, hosts file, processes, DNS config)
-- privacyFix({ actionId: string }) — execute a remediation action by ID (obtained from a prior privacy scan result). Actions include: opening the startup folder, opening a registry key, killing a suspicious process, opening the hosts file, opening DNS settings, or backing up the hosts file. Always run runPrivacyScan() first, THEN use privacyFix() with one of the recommended action IDs from the scan findings.
-- watchedFoldersList() — returns the list of configured watched folders and their contents as structured JSON (name, path, isDir, ext for each file). When the user asks "what is currently in your watched folders?" ALWAYS call watchedFoldersList(), do NOT ask the user for a path. Only ask for a specific path if the user explicitly refers to a folder that is NOT in the watched list.
-- watchedFoldersDescribe() — returns all watched folders and their immediate contents as formatted text. When the user asks about "watched folders" or mentions a specific watched folder label (e.g. "Laken's Files"), ALWAYS call watchedFoldersDescribe() first, then summarize the results in plain natural language. Do NOT tell the user to manually use folderList/folderRead tools. If the user mentions a specific folder label that matches one of the watched folders, focus your description on that folder first, then mention others if useful.
-- browserAction({ action, selector?, text?, scrollY?, url? }) — request the browser extension to click/type/scroll/navigate/scrape in the active tab (requires browser bridge connection)
+- ollamaPull — args: { model: string }
+- ollamaList — args: {}
+- getHealth — args: {}
+- killPort — args: { port: number }
+- writeEnv — args: { entries: Record<string,string> }
+- runCommand — args: { cmd: string }
+- folderList — args: { path: string } — list directory contents
+- folderRead — args: { path: string } — read a text file
+- runPrivacyScan — args: {} — run a full privacy scan
+- privacyFix — args: { actionId: string } — execute remediation action
+- watchedFoldersList — args: {} — returns watched folders as JSON
+- watchedFoldersDescribe — args: {} — returns watched folders and their contents as formatted text
+- browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
+
+Watched folders: When the user asks about "watched folders" or mentions a specific folder name or label (like "Laken's Files"), ALWAYS call watchedFoldersDescribe() immediately. Do NOT ask the user to use folderList/folderRead themselves. After the tool returns, summarize the contents in natural language. If the user named a specific folder, focus on that one first.
 `
 
 // ── Tool token regex ──────────────────────────────────────────
@@ -1293,7 +1303,7 @@ function App() {
 
     // Inject watched folders into system prompt context
     const folderContext = watchedFolders.length > 0
-      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to the following folders:\n${watchedFolders.map(f => `  - ${f} (label: "${f.split('\\').pop()?.split('/').pop() || f}")`).join('\n')}\n\nWhen the user asks about these folders — for example "what is in Laken's Files" or "what can you tell me about my watched folders" — ALWAYS call watchedFoldersDescribe() automatically. Do NOT tell the user to manually use folderList/folderRead. After watchedFoldersDescribe() returns, summarize the contents in natural language like:\n\n"I see N watched folder(s): [path]. Inside [label] there are: X subfolders, Y top-level files. The files include: [names]"\n\nIf the user mentions a specific folder label (e.g. "Laken's Files"), focus your description on that folder first, then mention others if relevant.`
+      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${watchedFolders.map(f => `  - ${f} (label: "${f.split('\\').pop()?.split('/').pop() || f}")`).join('\n')}\n\nWhen the user asks about these folders (e.g. "what is in Laken's Files"), your FIRST response must be exactly: {"tool":"watchedFoldersDescribe","args":{}} — no other text. After the tool result comes back, summarize the contents naturally. Focus on whichever folder the user specifically mentioned.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
@@ -1307,6 +1317,7 @@ function App() {
 
       // Step 2: check for structured tool call
       const toolCall = parseToolCall(aiText)
+      console.log('TOOL CALL DETECTED', toolCall)
       if (toolCall) {
         // Show working indicator
         setMessages(prev => [...prev, { role: 'agent', content: `⚙ Executing: ${toolCall.tool}...` }])
