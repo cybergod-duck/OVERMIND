@@ -1,0 +1,31 @@
+:root {
+  --header-h: 48px;
+  --sidebar-w: 280px;
+  --footer-h: 32px;
+  --bg: #111218;
+  --surface: #171821;
+  --surface-soft: #1c1e28;
+  --border: #2a2c38;
+  --text: #e0e3ec;
+  --text-muted: #787c8e;
+  --accent: #28e0b8;
+  --accent-soft: #16352f;
+  --danger: #ff5c5c;
+  --user-color: #3a7bff;
+  --highlight: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(circle at top, #181a24 0, #0c0d12 55%, #05060a 100%);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
