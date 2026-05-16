@@ -1648,3 +1648,160 @@ input, select, textarea {
   text-align: right;
   letter-spacing: 0.03em;
 }
+
+/* ── Privacy Action Buttons ──────────────────────────────────── */
+
+.privacy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.privacy-action-btn {
+  font-size: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid #2a2f45;
+  background: rgba(255, 255, 255, 0.03);
+  color: #8a8fb0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.privacy-action-btn:hover {
+  background: rgba(40, 224, 184, 0.08);
+  border-color: rgba(40, 224, 184, 0.3);
+  color: var(--accent);
+}
+
+.privacy-action-btn:active {
+  transform: scale(0.96);
+}
+
+.privacy-action-btn--danger {
+  border-color: rgba(255, 92, 92, 0.3);
+  color: #ff5c5c;
+}
+
+.privacy-action-btn--danger:hover {
+  background: rgba(255, 92, 92, 0.1);
+  border-color: rgba(255, 92, 92, 0.5);
+  color: #ff7c7c;
+}
+
+.privacy-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.privacy-action-result {
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-top: 2px;
+  color: #5a5f78;
+}
+
+.privacy-action-result--success {
+  color: var(--accent);
+  background: rgba(40, 224, 184, 0.06);
+}
+
+.privacy-action-result--error {
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.06);
+}
+
+/* ── Privacy Confirmation Overlay ────────────────────────────── */
+
+.privacy-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.privacy-confirm-box {
+  background: #141726;
+  border: 1px solid #2a2f45;
+  border-radius: 4px;
+  padding: 16px 20px;
+  max-width: 360px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.privacy-confirm-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff5c5c;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.privacy-confirm-desc {
+  font-size: 10px;
+  color: #8a8fb0;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.privacy-confirm-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.privacy-confirm-btn {
+  font-size: 9px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  border-radius: 2px;
+  border: 1px solid #2a2f45;
+  background: transparent;
+  color: #8a8fb0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.privacy-confirm-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #3a3f55;
+}
+
+.privacy-confirm-btn--danger {
+  background: rgba(255, 92, 92, 0.15);
+  border-color: rgba(255, 92, 92, 0.3);
+  color: #ff5c5c;
+}
+
+.privacy-confirm-btn--danger:hover {
+  background: rgba(255, 92, 92, 0.25);
+  border-color: rgba(255, 92, 92, 0.5);
+}
+
+/* ── Privacy Disclaimer ──────────────────────────────────────── */
+
+.privacy-disclaimer {
+  font-size: 7px;
+  color: #3a3f55;
+  line-height: 1.5;
+  padding: 6px 8px;
+  border: 1px dashed #1f2335;
+  border-radius: 3px;
+  margin-top: 6px;
+  font-style: italic;
+  letter-spacing: 0.03em;
+}

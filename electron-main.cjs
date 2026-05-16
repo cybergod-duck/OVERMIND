@@ -869,6 +869,56 @@ ipcMain.handle('privacy:get-history', () => {
   return store.get('privacyScanHistory', [])
 })
 
+// ── Privacy Remediation IPC handlers ──────────────────────────
+
+ipcMain.handle('privacy:open-startup-folder', async () => {
+  const startupPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+  const err = await shell.openPath(startupPath)
+  return { success: !err, error: err || undefined }
+})
+
+ipcMain.handle('privacy:open-reg-key', async (_e, params) => {
+  try {
+    // Open RegEdit at the specified key
+    execSync(`reg add "${params.key}" /f 2>nul`, { timeout: 3000, stdio: 'ignore' })
+    exec(`start regedit`, { shell: true })
+    return { success: true, note: `Opened RegEdit. Navigate to: ${params.key}` }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+ipcMain.handle('privacy:kill-process', async (_e, params) => {
+  try {
+    execSync(`taskkill /PID ${params.pid} /F`, { timeout: 5000, stdio: 'pipe' })
+    return { success: true, pid: params.pid }
+  } catch (e) {
+    return { success: false, pid: params.pid, error: e.message }
+  }
+})
+
+ipcMain.handle('privacy:open-hosts-file', async () => {
+  const hostsPath = 'C:\\Windows\\System32\\drivers\\etc\\hosts'
+  const err = await shell.openPath(hostsPath)
+  return { success: !err, error: err || undefined }
+})
+
+ipcMain.handle('privacy:open-dns-settings', async () => {
+  await shell.openExternal('ms-settings:network-ethernet')
+  return { success: true }
+})
+
+ipcMain.handle('privacy:backup-hosts-file', async () => {
+  const hostsPath = 'C:\\Windows\\System32\\drivers\\etc\\hosts'
+  const backupPath = `C:\\Windows\\System32\\drivers\\etc\\hosts.backup.${Date.now()}`
+  try {
+    fs.copyFileSync(hostsPath, backupPath)
+    return { success: true, backupPath }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
 // ── Browser Bridge IPC handlers ────────────────────────────────
 
 ipcMain.handle('browser:get-status', () => {

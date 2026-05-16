@@ -65,3 +65,14 @@ contextBridge.exposeInMainWorld('privacyAPI', {
   scanSummary:   ()                      => ipcRenderer.invoke('privacy:scan-summary'),
   getHistory:    ()                      => ipcRenderer.invoke('privacy:get-history'),
 });
+
+// ── Privacy Remediation API ──────────────────────────────────
+
+contextBridge.exposeInMainWorld('privacyRemediationAPI', {
+  openStartupFolder: ()                => ipcRenderer.invoke('privacy:open-startup-folder'),
+  openRegKey:        (params)          => ipcRenderer.invoke('privacy:open-reg-key', params),
+  killProcess:       (params)          => ipcRenderer.invoke('privacy:kill-process', params),
+  openHostsFile:     ()                => ipcRenderer.invoke('privacy:open-hosts-file'),
+  openDnsSettings:   ()                => ipcRenderer.invoke('privacy:open-dns-settings'),
+  backupHostsFile:   ()                => ipcRenderer.invoke('privacy:backup-hosts-file'),
+});

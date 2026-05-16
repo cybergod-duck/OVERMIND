@@ -15,11 +15,25 @@ import {
 
 // ── Privacy Sentinel types ────────────────────────────────────
 
+// ── Privacy Sentinel types ──────────────────────────────────────
+
+type RemediationAction = {
+  id: string
+  label: string
+  description: string
+  tool: 'openFolder' | 'openRegKey' | 'killProcess' | 'openHostsFile' | 'openDnsSettings' | 'runCommand'
+  params: Record<string, any>
+  safe: boolean
+}
+
 interface PrivacyStartupItem {
   name: string
   path: string
   source: string
   target: string
+  severity: 'info' | 'warning' | 'critical'
+  category: 'startup'
+  recommendedActions: RemediationAction[]
 }
 
 interface PrivacyStartupResult {
@@ -40,6 +54,9 @@ interface PrivacyHostsAnomaly {
   type: 'info' | 'warning' | 'critical'
   message: string
   line: number
+  severity: 'info' | 'warning' | 'critical'
+  category: 'hosts'
+  recommendedActions: RemediationAction[]
 }
 
 interface PrivacyHostsResult {
@@ -63,6 +80,9 @@ interface PrivacyProcessWarning {
   pid: number
   name: string
   reason: string
+  severity: 'info' | 'warning' | 'critical'
+  category: 'process'
+  recommendedActions: RemediationAction[]
 }
 
 interface PrivacyProcessesResult {
@@ -76,6 +96,9 @@ interface PrivacyProcessesResult {
 interface PrivacyDnsWarning {
   type: 'info' | 'warning'
   message: string
+  severity: 'info' | 'warning'
+  category: 'dns'
+  recommendedActions: RemediationAction[]
 }
 
 interface PrivacyDnsResult {
@@ -143,6 +166,14 @@ declare global {
       sendAction:     (msg: any) => Promise<void>
       getLastContext: () => Promise<any>
     }
+    privacyRemediationAPI: {
+      openStartupFolder: () => Promise<{ success: boolean }>
+      openRegKey:        (params: { key: string }) => Promise<{ success: boolean; note?: string }>
+      killProcess:       (params: { pid: number; name: string }) => Promise<{ success: boolean; pid?: number; error?: string }>
+      openHostsFile:     () => Promise<{ success: boolean }>
+      openDnsSettings:   () => Promise<{ success: boolean }>
+      backupHostsFile:   () => Promise<{ success: boolean; backupPath?: string }>
+    }
   }
 }
 
@@ -184,6 +215,113 @@ type SetupPhase =
   | 'model-prompt'
   | 'pulling-model'
   | 'complete'
+
+// ── Module-level reference for agent tool ───────────────────────
+
+let _lastPrivacyResult: PrivacySummaryResult | null = null
+
+// ── Generate remediation actions from scan findings ────────────
+
+function generateRemediationActions(result: PrivacySummaryResult): void {
+  // Startup items
+  if (result.startup?.flagged) {
+    for (const item of result.startup.flagged) {
+      (item as any).severity = 'critical'
+      ;(item as any).category = 'startup'
+      ;(item as any).recommendedActions = [
+        {
+          id: `startup-disable-${item.name}-${Date.now()}`,
+          label: 'Open Startup Folder',
+          description: `Opens the Windows startup folder in Explorer so you can review and remove "${item.name}"`,
+          tool: 'openFolder',
+          params: {},
+          safe: true,
+        },
+        {
+          id: `startup-reg-${item.name}-${Date.now()}`,
+          label: 'Open Registry Key',
+          description: `Opens RegEdit focused on the Run key where "${item.name}" is registered (${item.source})`,
+          tool: 'openRegKey',
+          params: { key: item.source === 'HKCU Run' ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' },
+          safe: true,
+        },
+      ]
+    }
+  }
+
+  // Hosts file anomalies
+  if (result.hosts?.anomalies) {
+    for (const a of result.hosts.anomalies) {
+      (a as any).severity = a.type
+      ;(a as any).category = 'hosts'
+      const actions: RemediationAction[] = [
+        {
+          id: `hosts-open-${a.line}-${Date.now()}`,
+          label: 'Open Hosts File',
+          description: `Opens the hosts file in Notepad for manual review (line ${a.line})`,
+          tool: 'openHostsFile',
+          params: {},
+          safe: true,
+        },
+        {
+          id: `hosts-backup-${a.line}-${Date.now()}`,
+          label: 'Backup Hosts File',
+          description: 'Creates a timestamped backup of the hosts file before any edits',
+          tool: 'runCommand',
+          params: { cmd: 'backup-hosts' },
+          safe: true,
+        },
+      ]
+      if (a.type === 'critical') {
+        actions.push({
+          id: `hosts-dns-settings-${a.line}-${Date.now()}`,
+          label: 'Open DNS Settings',
+          description: 'Opens Windows network/DNS settings to review DNS configuration',
+          tool: 'openDnsSettings',
+          params: {},
+          safe: true,
+        })
+      }
+      ;(a as any).recommendedActions = actions
+    }
+  }
+
+  // Process warnings
+  if (result.processes?.warnings) {
+    for (const w of result.processes.warnings) {
+      (w as any).severity = w.type
+      ;(w as any).category = 'process'
+      ;(w as any).recommendedActions = [
+        {
+          id: `process-kill-${w.pid}-${Date.now()}`,
+          label: `Kill Process ${w.name} (PID ${w.pid})`,
+          description: `Terminates "${w.name}" (PID ${w.pid}). Reason: ${w.reason}`,
+          tool: 'killProcess',
+          params: { pid: w.pid, name: w.name },
+          safe: false,
+        },
+      ]
+    }
+  }
+
+  // DNS warnings
+  if (result.dns?.warnings) {
+    for (const w of result.dns.warnings) {
+      (w as any).severity = w.type
+      ;(w as any).category = 'dns'
+      ;(w as any).recommendedActions = [
+        {
+          id: `dns-settings-${Date.now()}`,
+          label: 'Open DNS Settings',
+          description: `Opens Windows network/DNS settings to review: ${w.message}`,
+          tool: 'openDnsSettings',
+          params: {},
+          safe: true,
+        },
+      ]
+    }
+  }
+}
 
 // ── Constants ──────────────────────────────────────────────────
 
@@ -324,6 +462,40 @@ const AGENT_TOOLS = {
       scrollY: args.scrollY,
       url: args.url,
     }),
+  privacyFix: (args: { actionId: string }) => {
+    if (!_lastPrivacyResult) return Promise.resolve({ error: 'No scan result available. Run a privacy scan first.' })
+    // Collect all recommended actions from the last scan
+    const allActions: RemediationAction[] = [
+      ...(_lastPrivacyResult.startup?.flagged?.flatMap(f => f.recommendedActions) ?? []),
+      ...(_lastPrivacyResult.hosts?.anomalies?.flatMap(a => a.recommendedActions) ?? []),
+      ...(_lastPrivacyResult.processes?.warnings?.flatMap(w => w.recommendedActions) ?? []),
+      ...(_lastPrivacyResult.dns?.warnings?.flatMap(w => w.recommendedActions) ?? []),
+    ]
+    const action = allActions.find(a => a.id === args.actionId)
+    if (!action) return Promise.resolve({ error: `Action "${args.actionId}" not found in last scan result. Run a fresh scan first.` })
+
+    const api = (window as any).privacyRemediationAPI
+    if (!api) return Promise.resolve({ error: 'privacyRemediationAPI not available (running outside Electron?)' })
+
+    switch (action.tool) {
+      case 'openFolder':
+        return api.openStartupFolder()
+      case 'openRegKey':
+        return api.openRegKey(action.params)
+      case 'killProcess':
+        return api.killProcess(action.params)
+      case 'openHostsFile':
+        return api.openHostsFile()
+      case 'openDnsSettings':
+        return api.openDnsSettings()
+      case 'runCommand':
+        return action.params.cmd === 'backup-hosts'
+          ? api.backupHostsFile()
+          : Promise.resolve({ error: `Unknown command: ${action.params.cmd}` })
+      default:
+        return Promise.resolve({ error: `Unknown remediation tool: ${action.tool}` })
+    }
+  },
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
@@ -342,6 +514,7 @@ Available tools:
 - folderList({ path: string }) — list contents of a directory (returns formatted listing)
 - folderRead({ path: string }) — read a text file's contents (max 100KB)
 - runPrivacyScan() — run a full privacy scan (startup items, hosts file, processes, DNS config)
+- privacyFix({ actionId: string }) — execute a remediation action by ID (obtained from a prior privacy scan result). Actions include: opening the startup folder, opening a registry key, killing a suspicious process, opening the hosts file, opening DNS settings, or backing up the hosts file. Always run runPrivacyScan() first, THEN use privacyFix() with one of the recommended action IDs from the scan findings.
 - browserAction({ action, selector?, text?, scrollY?, url? }) — request the browser extension to click/type/scroll/navigate/scrape in the active tab (requires browser bridge connection)
 `
 
@@ -422,6 +595,8 @@ function App() {
   const [privacyRunning, setPrivacyRunning] = useState(false)
   const [privacyResult, setPrivacyResult]   = useState<PrivacySummaryResult | null>(null)
   const [privacyError, setPrivacyError]     = useState<string | null>(null)
+  const [privacyConfirmAction, setPrivacyConfirmAction] = useState<RemediationAction | null>(null)
+  const [privacyActionResults, setPrivacyActionResults] = useState<Record<string, { success: boolean; message: string }>>({})
 
   // ── Settings state ──────────────────────────────────────────
   const [ollamaHost, setOllamaHost]                 = useState('http://localhost:11434')
@@ -702,6 +877,8 @@ function App() {
     log('PRIVACY: scan started...')
     try {
       const result = await (window as any).privacyAPI.scanSummary()
+      generateRemediationActions(result)
+      _lastPrivacyResult = result
       setPrivacyResult(result)
       const total = (result.startup?.flaggedCount ?? 0) + (result.hosts?.anomalyCount ?? 0) +
                     (result.processes?.warningCount ?? 0) + (result.dns?.warnings?.length ?? 0)
@@ -711,6 +888,59 @@ function App() {
       log(`PRIVACY: error — ${err.message}`)
     } finally {
       setPrivacyRunning(false)
+    }
+  }
+
+  // ── Privacy Remediation ──────────────────────────────────────
+
+  const handleExecuteAction = async (action: RemediationAction) => {
+    const api = (window as any).privacyRemediationAPI
+    if (!api) {
+      log('PRIVACY: remediation API unavailable')
+      return
+    }
+    try {
+      let result: any
+      switch (action.tool) {
+        case 'openFolder':
+          result = await api.openStartupFolder()
+          break
+        case 'openRegKey':
+          result = await api.openRegKey(action.params)
+          break
+        case 'killProcess':
+          result = await api.killProcess(action.params)
+          break
+        case 'openHostsFile':
+          result = await api.openHostsFile()
+          break
+        case 'openDnsSettings':
+          result = await api.openDnsSettings()
+          break
+        case 'runCommand':
+          result = action.params.cmd === 'backup-hosts'
+            ? await api.backupHostsFile()
+            : { success: false, error: `Unknown command: ${action.params.cmd}` }
+          break
+        default:
+          result = { success: false, error: `Unknown tool: ${action.tool}` }
+      }
+      const msg = result.success
+        ? `${action.label} — success${result.backupPath ? ` (backup: ${result.backupPath})` : ''}`
+        : `${action.label} — failed: ${result.error || 'unknown error'}`
+      setPrivacyActionResults(prev => ({ ...prev, [action.id]: { success: result.success, message: msg } }))
+      log(`PRIVACY_ACTION: ${msg}`)
+    } catch (err: any) {
+      setPrivacyActionResults(prev => ({ ...prev, [action.id]: { success: false, message: `${action.label} — error: ${err.message}` } }))
+      log(`PRIVACY_ACTION: ${action.label} — error: ${err.message}`)
+    }
+  }
+
+  const handleRemediationAction = (action: RemediationAction) => {
+    if (action.safe) {
+      handleExecuteAction(action)
+    } else {
+      setPrivacyConfirmAction(action)
     }
   }
 
@@ -2211,9 +2441,30 @@ function App() {
                     {privacyResult.startup?.flagged?.length > 0 && (
                       <div className="privacy-list">
                         {privacyResult.startup.flagged.map((f, i) => (
-                          <div key={i} className="privacy-item privacy-item--critical">
-                            <span className="privacy-item-name">{f.name}</span>
-                            <span className="privacy-item-detail">{f.source}</span>
+                          <div key={i}>
+                            <div className="privacy-item privacy-item--critical">
+                              <span className="privacy-item-name">{f.name}</span>
+                              <span className="privacy-item-detail">{f.source}</span>
+                            </div>
+                            {f.recommendedActions && f.recommendedActions.length > 0 && (
+                              <div className="privacy-actions">
+                                {f.recommendedActions.map(a => (
+                                  <button
+                                    key={a.id}
+                                    className={`privacy-action-btn${!a.safe ? ' privacy-action-btn--danger' : ''}`}
+                                    onClick={() => handleRemediationAction(a)}
+                                    title={a.description}
+                                  >
+                                    {a.label}
+                                  </button>
+                                ))}
+                                {privacyActionResults[f.recommendedActions[0]?.id] && (
+                                  <div className={`privacy-action-result privacy-action-result--${privacyActionResults[f.recommendedActions[0].id].success ? 'success' : 'error'}`}>
+                                    {privacyActionResults[f.recommendedActions[0].id].message}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2234,9 +2485,30 @@ function App() {
                     {privacyResult.hosts?.anomalies?.length > 0 && (
                       <div className="privacy-list">
                         {privacyResult.hosts.anomalies.slice(0, 6).map((a, i) => (
-                          <div key={i} className={`privacy-item privacy-item--${a.type}`}>
-                            <span className="privacy-item-name">{a.message}</span>
-                            <span className="privacy-item-detail">Line {a.line}</span>
+                          <div key={i}>
+                            <div className={`privacy-item privacy-item--${a.type}`}>
+                              <span className="privacy-item-name">{a.message}</span>
+                              <span className="privacy-item-detail">Line {a.line}</span>
+                            </div>
+                            {a.recommendedActions && a.recommendedActions.length > 0 && (
+                              <div className="privacy-actions">
+                                {a.recommendedActions.map(act => (
+                                  <button
+                                    key={act.id}
+                                    className={`privacy-action-btn${!act.safe ? ' privacy-action-btn--danger' : ''}`}
+                                    onClick={() => handleRemediationAction(act)}
+                                    title={act.description}
+                                  >
+                                    {act.label}
+                                  </button>
+                                ))}
+                                {privacyActionResults[a.recommendedActions[0]?.id] && (
+                                  <div className={`privacy-action-result privacy-action-result--${privacyActionResults[a.recommendedActions[0].id].success ? 'success' : 'error'}`}>
+                                    {privacyActionResults[a.recommendedActions[0].id].message}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                         {privacyResult.hosts.anomalies.length > 6 && (
@@ -2260,9 +2532,30 @@ function App() {
                     {privacyResult.processes?.warnings?.length > 0 && (
                       <div className="privacy-list">
                         {privacyResult.processes.warnings.slice(0, 8).map((w, i) => (
-                          <div key={i} className={`privacy-item privacy-item--${w.type}`}>
-                            <span className="privacy-item-name">{w.name} (PID {w.pid})</span>
-                            <span className="privacy-item-detail">{w.reason}</span>
+                          <div key={i}>
+                            <div className={`privacy-item privacy-item--${w.type}`}>
+                              <span className="privacy-item-name">{w.name} (PID {w.pid})</span>
+                              <span className="privacy-item-detail">{w.reason}</span>
+                            </div>
+                            {w.recommendedActions && w.recommendedActions.length > 0 && (
+                              <div className="privacy-actions">
+                                {w.recommendedActions.map(act => (
+                                  <button
+                                    key={act.id}
+                                    className={`privacy-action-btn${!act.safe ? ' privacy-action-btn--danger' : ''}`}
+                                    onClick={() => handleRemediationAction(act)}
+                                    title={act.description}
+                                  >
+                                    {act.label}
+                                  </button>
+                                ))}
+                                {privacyActionResults[w.recommendedActions[0]?.id] && (
+                                  <div className={`privacy-action-result privacy-action-result--${privacyActionResults[w.recommendedActions[0].id].success ? 'success' : 'error'}`}>
+                                    {privacyActionResults[w.recommendedActions[0].id].message}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                         {privacyResult.processes.warnings.length > 8 && (
@@ -2293,13 +2586,41 @@ function App() {
                     {privacyResult.dns?.warnings?.length > 0 && (
                       <div className="privacy-list" style={{ marginTop: 4 }}>
                         {privacyResult.dns.warnings.map((w, i) => (
-                          <div key={i} className={`privacy-item privacy-item--${w.type}`}>
-                            <span className="privacy-item-name">{w.message}</span>
+                          <div key={i}>
+                            <div className={`privacy-item privacy-item--${w.type}`}>
+                              <span className="privacy-item-name">{w.message}</span>
+                            </div>
+                            {w.recommendedActions && w.recommendedActions.length > 0 && (
+                              <div className="privacy-actions">
+                                {w.recommendedActions.map(act => (
+                                  <button
+                                    key={act.id}
+                                    className={`privacy-action-btn${!act.safe ? ' privacy-action-btn--danger' : ''}`}
+                                    onClick={() => handleRemediationAction(act)}
+                                    title={act.description}
+                                  >
+                                    {act.label}
+                                  </button>
+                                ))}
+                                {privacyActionResults[w.recommendedActions[0]?.id] && (
+                                  <div className={`privacy-action-result privacy-action-result--${privacyActionResults[w.recommendedActions[0].id].success ? 'success' : 'error'}`}>
+                                    {privacyActionResults[w.recommendedActions[0].id].message}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
                     )}
                     <div className="privacy-dns-time">Resolution: {privacyResult.dns?.resolutionTime ?? 'unknown'}</div>
+                  </div>
+
+                  {/* Disclaimer */}
+                  <div className="privacy-disclaimer">
+                    LOCKBOX provides read-only access and safe navigation tools. Destructive actions (e.g., Kill Process)
+                    require explicit confirmation. LOCKBOX will never auto-execute destructive actions — the agent must
+                    present them for your review via the chat interface or sidebar buttons.
                   </div>
 
                   {/* Timestamp */}
@@ -2313,6 +2634,33 @@ function App() {
               {privacyResult?.error && (
                 <div className="privacy-error">Scan failed: {privacyResult.error}</div>
               )}
+            </div>
+          )}
+
+          {/* ── Privacy Confirmation Overlay ──────────────────────── */}
+          {privacyConfirmAction && (
+            <div className="privacy-confirm-overlay" onClick={() => setPrivacyConfirmAction(null)}>
+              <div className="privacy-confirm-box" onClick={e => e.stopPropagation()}>
+                <div className="privacy-confirm-title">⚠ Confirm Action</div>
+                <div className="privacy-confirm-desc">
+                  <strong>{privacyConfirmAction.label}</strong><br />
+                  {privacyConfirmAction.description}
+                </div>
+                <div className="privacy-confirm-actions">
+                  <button className="privacy-confirm-btn" onClick={() => setPrivacyConfirmAction(null)}>
+                    CANCEL
+                  </button>
+                  <button
+                    className="privacy-confirm-btn privacy-confirm-btn--danger"
+                    onClick={() => {
+                      handleExecuteAction(privacyConfirmAction)
+                      setPrivacyConfirmAction(null)
+                    }}
+                  >
+                    CONFIRM
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
