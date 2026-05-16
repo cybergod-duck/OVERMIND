@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('folderAPI', {
   addWatched:       (folderPath)      => ipcRenderer.invoke('folder:addWatched', folderPath),
   getWatched:       ()                => ipcRenderer.invoke('folder:getWatched'),
   removeWatched:    (folderPath)      => ipcRenderer.invoke('folder:removeWatched', folderPath),
+  listJson:         (folderPath)      => ipcRenderer.invoke('folder:list-json', folderPath),
 });
 
 // ── Browser Bridge IPC ───────────────────────────────────────

@@ -145,6 +145,7 @@ declare global {
       addWatched:     (folderPath: string) => Promise<boolean>
       getWatched:     () => Promise<string[]>
       removeWatched:  (folderPath: string) => Promise<boolean>
+      listJson:       (folderPath: string) => Promise<{ error: string | null; files: { name: string; path: string; isDir: boolean; ext: string }[] }>
     }
     setupAPI: {
       checkOllamaInstalled: () => Promise<{ installed: boolean; version: string | null }>
@@ -496,6 +497,22 @@ const AGENT_TOOLS = {
         return Promise.resolve({ error: `Unknown remediation tool: ${action.tool}` })
     }
   },
+  watchedFoldersList: async () => {
+    const paths: string[] = await window.folderAPI.getWatched()
+    if (paths.length === 0) {
+      return { folders: [], message: 'No watched folders configured.' }
+    }
+    const folders: { path: string; files: { name: string; path: string; isDir: boolean; ext: string }[] }[] = []
+    for (const folderPath of paths) {
+      const result = await window.folderAPI.listJson(folderPath)
+      if (result.error) {
+        folders.push({ path: folderPath, files: [] })
+      } else {
+        folders.push({ path: folderPath, files: result.files })
+      }
+    }
+    return { folders }
+  },
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
@@ -515,6 +532,7 @@ Available tools:
 - folderRead({ path: string }) — read a text file's contents (max 100KB)
 - runPrivacyScan() — run a full privacy scan (startup items, hosts file, processes, DNS config)
 - privacyFix({ actionId: string }) — execute a remediation action by ID (obtained from a prior privacy scan result). Actions include: opening the startup folder, opening a registry key, killing a suspicious process, opening the hosts file, opening DNS settings, or backing up the hosts file. Always run runPrivacyScan() first, THEN use privacyFix() with one of the recommended action IDs from the scan findings.
+- watchedFoldersList() — returns the list of configured watched folders and their contents as structured JSON (name, path, isDir, ext for each file). When the user asks "what is currently in your watched folders?" ALWAYS call watchedFoldersList(), do NOT ask the user for a path. Only ask for a specific path if the user explicitly refers to a folder that is NOT in the watched list.
 - browserAction({ action, selector?, text?, scrollY?, url? }) — request the browser extension to click/type/scroll/navigate/scrape in the active tab (requires browser bridge connection)
 `
 
@@ -609,6 +627,7 @@ function App() {
 
   // ── Watched folders ────────────────────────────────────────
   const [watchedFolders, setWatchedFolders] = useState<string[]>([])
+  const [watchedFolderSummary, setWatchedFolderSummary] = useState<{ path: string; fileCount: number; dirCount: number; error?: string }[] | null>(null)
 
   // ── First-run setup state ──────────────────────────────────
   const [firstRunComplete, setFirstRunComplete] = useState<boolean | null>(null) // null = loading
@@ -1410,6 +1429,28 @@ function App() {
   const handleOpenInExplorer = async (folderPath: string) => {
     if (!window.folderAPI) return
     await window.folderAPI.openInExplorer(folderPath)
+  }
+
+  /** Refresh the watched folder contents summary for the UI */
+  const handleRefreshFolderSummary = async () => {
+    if (!window.folderAPI) return
+    const paths: string[] = await window.folderAPI.getWatched()
+    if (paths.length === 0) {
+      setWatchedFolderSummary([])
+      return
+    }
+    const summaries: { path: string; fileCount: number; dirCount: number; error?: string }[] = []
+    for (const folderPath of paths) {
+      const result = await window.folderAPI.listJson(folderPath)
+      if (result.error) {
+        summaries.push({ path: folderPath, fileCount: 0, dirCount: 0, error: result.error })
+      } else {
+        const files = result.files.filter(f => !f.isDir).length
+        const dirs = result.files.filter(f => f.isDir).length
+        summaries.push({ path: folderPath, fileCount: files, dirCount: dirs })
+      }
+    }
+    setWatchedFolderSummary(summaries)
   }
 
   // ── Setup Panel Logic ─────────────────────────────────────
@@ -2279,26 +2320,49 @@ function App() {
           {/* ── Watched Folders ──────────────────────────────── */}
           <div className="section-label" style={{ marginTop: 8 }}>
             <FolderOpen size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            WATCHED_FOLDERS
+            WATCHED_FOLDERS ({watchedFolders.length})
+            <button
+              className="folder-refresh-btn"
+              onClick={handleRefreshFolderSummary}
+              title="Refresh folder contents summary"
+              style={{ marginLeft: 'auto', fontSize: 8, padding: '1px 5px', background: 'transparent', border: '1px solid #1f2335', borderRadius: 2, color: '#8a8fb0', cursor: 'pointer' }}
+            >
+              REFRESH
+            </button>
           </div>
 
           <div className="folders-section">
             {watchedFolders.length === 0 ? (
               <div className="vault-empty">No folders watched yet.</div>
             ) : (
-              watchedFolders.map((f, i) => (
-                <div key={i} className="folder-item">
-                  <span className="folder-item-path" title={f}>{f}</span>
-                  <div className="folder-item-actions">
-                    <button className="folder-action-btn" onClick={() => handleOpenInExplorer(f)} title="Open in explorer">
-                      <ExternalLink size={12} />
-                    </button>
-                    <button className="folder-action-btn" onClick={() => handleRemoveWatchedFolder(f)} title="Remove from watched">
-                      <X size={12} />
-                    </button>
+              <>
+                {watchedFolders.map((f, i) => (
+                  <div key={i} className="folder-item">
+                    <span className="folder-item-path" title={f}>{f}</span>
+                    <div className="folder-item-actions">
+                      <button className="folder-action-btn" onClick={() => handleOpenInExplorer(f)} title="Open in explorer">
+                        <ExternalLink size={12} />
+                      </button>
+                      <button className="folder-action-btn" onClick={() => handleRemoveWatchedFolder(f)} title="Remove from watched">
+                        <X size={12} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+                {/* Inline summary from latest refresh */}
+                {watchedFolderSummary && watchedFolderSummary.length > 0 && (
+                  <div style={{ fontSize: 8, color: '#5a5f78', padding: '4px 6px', borderTop: '1px solid #1f2335', marginTop: 2, lineHeight: 1.6 }}>
+                    {watchedFolderSummary.map((s, i) => (
+                      <div key={i}>
+                        {s.error
+                          ? `⚠ ${s.path} — ${s.error}`
+                          : `${s.path} — ${s.dirCount} folders, ${s.fileCount} files`
+                        }
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
             <button className="btn-folder-add" onClick={handleAddWatchedFolder}>
               <Plus size={12} /> ADD FOLDER

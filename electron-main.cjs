@@ -197,6 +197,36 @@ ipcMain.handle('folder:list', async (_e, folderPath) => {
   }
 })
 
+ipcMain.handle('folder:list-json', async (_e, folderPath) => {
+  try {
+    if (!folderPath) return { error: 'No folder path provided.', files: [] }
+    if (!fs.existsSync(folderPath)) return { error: `Path does not exist: ${folderPath}`, files: [] }
+
+    const stat = fs.statSync(folderPath)
+    if (!stat.isDirectory()) return { error: `Not a directory: ${folderPath}`, files: [] }
+
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true })
+    const files = entries.map(entry => {
+      const fullPath = path.join(folderPath, entry.name)
+      const ext = entry.isFile() ? path.extname(entry.name).toLowerCase() : ''
+      return {
+        name: entry.name,
+        path: fullPath,
+        isDir: entry.isDirectory(),
+        ext,
+      }
+    })
+    // Sort: directories first, then files, alphabetically
+    files.sort((a, b) => {
+      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+    return { error: null, files }
+  } catch (e) {
+    return { error: e.message, files: [] }
+  }
+})
+
 ipcMain.handle('folder:readFile', async (_e, filePath) => {
   try {
     if (!filePath) return 'ERROR: No file path provided.'
