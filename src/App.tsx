@@ -581,11 +581,14 @@ const TOOL_SYSTEM_SUFFIX = `
 You MUST call tools by outputting ONLY a single JSON object. No explanations, no backticks, no markdown, no extra text.
 
 Correct format:
-{"tool":"watchedFoldersDescribe","args":{}}
+{"tool":"watchedFoldersDeepScan","args":{}}
 
-Incorrect:
-"I will call watchedFoldersDescribe()..."  ← NEVER do this
-\`\`\`json{"tool":"watchedFoldersDescribe"}\`\`\`  ← NEVER use backticks
+Incorrect (NEVER do these):
+- "I will call watchedFoldersDeepScan()..."  ← narration
+- \`\`\`json{"tool":"watchedFoldersDeepScan"}\`\`\`  ← backticks
+- {"message":"...","files":[...]}  ← JSON response objects are FORBIDDEN
+
+CRITICAL: The ONLY valid JSON format is {"tool":"<toolName>","args":{...}}. Never output any other JSON structure. If you want to answer in natural language, use plain text — never JSON objects with keys like "message" or "files".
 
 Your entire response must be exactly the JSON object. The system will execute it and return the result, then you can respond naturally.
 
@@ -1388,18 +1391,50 @@ function App() {
       : ''
 
     // Inject watched folders into system prompt context
+    const folderLabels = watchedFolders.map(f => ({
+      path: f,
+      label: f.split('\\').pop()?.split('/').pop() || f,
+    }))
     const folderContext = watchedFolders.length > 0
-      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${watchedFolders.map(f => `  - ${f} (label: "${f.split('\\').pop()?.split('/').pop() || f}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE. When the user asks about these folders (e.g. "what is in Laken's Files", "name the subfolders", "analyze Laken's Files"), your FIRST response must be exactly: {"tool":"watchedFoldersDeepScan","args":{}} — no other text. After the [FOLDER TREE] result comes back, refer ONLY to actual names from that tree. Never invent or guess filenames.`
+      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE. When the user asks about these folders (e.g. "what is in Laken's Files", "name the subfolders", "analyze Laken's Files"), your FIRST response must be exactly: {"tool":"watchedFoldersDeepScan","args":{}} — no other text. After the [FOLDER TREE] result comes back, refer ONLY to actual names from that tree. Never invent or guess filenames.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
 
     try {
+      // ── Pre-scan detection: auto-call watchedFoldersDeepScan if question references watched folders ──
+      const userTextLower = userText.toLowerCase()
+      const watchedKeywords = [
+        ...watchedFolders.map(f => f.toLowerCase()),
+        ...folderLabels.map(f => f.label.toLowerCase()),
+        'watched folder',
+        'subfolder',
+        'folder tree',
+        'directory tree',
+        'what is in',
+        'tell me about.*files',
+      ]
+      const mentionsWatched = watchedFolders.length > 0 && watchedKeywords.some(kw => userTextLower.includes(kw))
+
+      let preScannedData: { roots: string[]; snapshots: { path: string; depth: number; entries: string; truncated: boolean }[] } | null = null
+      if (mentionsWatched) {
+        log('AUTO_PRE_SCAN: user question references watched folders, pre-scanning...')
+        const scanFn = AGENT_TOOLS.watchedFoldersDeepScan
+        preScannedData = await (scanFn as any)({})
+        log(`PRE_SCAN_COMPLETE: ${(preScannedData as NonNullable<typeof preScannedData>).snapshots.length} folder(s) scanned`)
+      }
+
+      // Build messages array — inject pre-scanned data before AI response if available
+      const msgsForAI: Message[] = [...messages, { role: 'user', content: userText }]
+      if (preScannedData) {
+        msgsForAI.push({
+          role: 'user',
+          content: `[ATTACHED: REAL FOLDER TREE - obtained from watchedFoldersDeepScan() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nThe above is the ACTUAL filesystem data. Use it to answer the user's question. Do not invent or guess any file or folder names. If the answer isn't in this data, say so.`,
+        })
+      }
+
       // Step 1: get initial AI response
-      let aiText = await callAI(fullSystemPrompt, [
-        ...messages,
-        { role: 'user', content: userText },
-      ])
+      let aiText = await callAI(fullSystemPrompt, msgsForAI)
 
       // Step 2: check for structured tool call
       const toolCall = parseToolCall(aiText)
@@ -1434,6 +1469,23 @@ function App() {
         setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: aiText }])
         log(`AI_RESPONSE: ${aiText.slice(0, 60)}...`)
       } else {
+        // If the question was about watched folders but AI didn't call the tool, re-prompt with data
+        if (mentionsWatched && !preScannedData) {
+          log('FORCE_RE_SCAN: AI did not call tool, forcing watchedFoldersDeepScan...')
+          const scanFn = AGENT_TOOLS.watchedFoldersDeepScan
+          preScannedData = await (scanFn as any)({})
+          const followUp: Message = {
+            role: 'user',
+            content: `[NOTE: You did not call watchedFoldersDeepScan(). Here is the REAL watched folder data — use it to answer the user's question. Never invent filenames.]\n${JSON.stringify(preScannedData, null, 2)}`,
+          }
+          aiText = await callAI(fullSystemPrompt, [
+            ...messages,
+            { role: 'user', content: userText },
+            { role: 'assistant', content: aiText },
+            followUp,
+          ])
+        }
+
         setMessages(prev => [...prev, { role: 'assistant', content: aiText }])
         log(`AI_RESPONSE: ${aiText.slice(0, 60)}...`)
 
