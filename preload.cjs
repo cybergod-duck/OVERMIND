@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('setupAPI', {
     ipcRenderer.on('setup:log', handler)
     // Return cleanup function
     return () => ipcRenderer.removeListener('setup:log', handler)
+  }
 });
 
 // ── Privacy Sentinel IPC ─────────────────────────────────────
