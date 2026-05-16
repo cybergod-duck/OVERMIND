@@ -189,6 +189,8 @@ type SetupPhase =
 
 const SYSTEM_PROMPT = `You are LOCKBOX, a local system operator assistant.
 
+## Core Instructions
+
 You do three things:
 1) Help the user talk to local Ollama and remote AI APIs using credentials from the vault.
 2) Help manage those credentials safely.
@@ -201,7 +203,11 @@ When the user describes a system problem (slow internet, high CPU, freezing apps
   - [TOOL:DIAGNOSE_SYSTEM] to get CPU, memory, top processes.
   - [TOOL:LIST_FOLDER path="..."] if you need to inspect a folder's contents.
   - [TOOL:PRIVACY_SCAN] to run a full privacy scan (startup items, hosts file, processes, DNS config).
-Do **not** invent results for these tools. Wait for the actual diagnostic output in later messages and then interpret it.`
+
+Do **not** invent results for these tools. Wait for the actual diagnostic output in later messages and then interpret it.
+
+After a tool call result is returned to you, respond naturally in plain language summarizing what happened.
+Only use a tool when the user's request clearly requires it. Never guess — if unsure, ask first.`
 
 // Routing config only — NOT a list of available models
 const PROVIDER_CONFIG: Record<string, ProviderInfo> = {
@@ -321,8 +327,11 @@ const AGENT_TOOLS = {
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
+## User-Facing Features
+
 You have access to the following system tools. When you need to use one, respond with ONLY a JSON block in this exact format and nothing else:
 {"tool":"<toolName>","args":{...}}
+
 Available tools:
 - ollamaPull({ model: string }) — pull/install an Ollama model
 - ollamaList() — list installed Ollama models
@@ -332,9 +341,8 @@ Available tools:
 - runCommand({ cmd: string }) — run an allowlisted command
 - folderList({ path: string }) — list contents of a directory (returns formatted listing)
 - folderRead({ path: string }) — read a text file's contents (max 100KB)
+- runPrivacyScan() — run a full privacy scan (startup items, hosts file, processes, DNS config)
 - browserAction({ action, selector?, text?, scrollY?, url? }) — request the browser extension to click/type/scroll/navigate/scrape in the active tab (requires browser bridge connection)
-After a tool call result is returned to you, respond naturally in plain language summarizing what happened.
-Only use a tool when the user's request clearly requires it. Never guess — if unsure, ask first.
 `
 
 // ── Tool token regex ──────────────────────────────────────────
