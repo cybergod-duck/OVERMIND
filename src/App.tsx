@@ -1085,6 +1085,8 @@ function App() {
         const tokens = parseToolTokens(aiText)
         for (const token of tokens) {
           log(`TOOL_TRIGGERED: ${token.type}`)
+          // Show working indicator before executing
+          setMessages(prev => [...prev, { role: 'agent', content: `⚙ Executing: ${token.type}...` }])
           try {
             let result: string
             if (token.type === 'DIAGNOSE_NETWORK' || token.type === 'DIAGNOSE_SYSTEM' || token.type === 'LIST_FOLDER') {
