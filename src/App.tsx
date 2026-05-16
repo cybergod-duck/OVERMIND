@@ -576,21 +576,43 @@ const AGENT_TOOLS = {
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
-## Tool Calling Rules
+╔══════════════════════════════════════════════════════════════╗
+║              TOOL CALLING — ABSOLUTE RULES                  ║
+╚══════════════════════════════════════════════════════════════╝
 
-You MUST call tools by outputting ONLY a single JSON object. No explanations, no backticks, no markdown, no extra text.
+RULE 1 — Your ENTIRE response MUST be EXACTLY one of these:
+  {"tool":"watchedFoldersDeepScan","args":{}}
+  {"tool":"folderRead","args":{"path":"..."}}
+  {"tool":"folderList","args":{"path":"..."}}
+  ...or another tool from the list below.
 
-Correct format:
-{"tool":"watchedFoldersDeepScan","args":{}}
+RULE 2 — NEVER output any other JSON format. In particular, these are FORBIDDEN:
+  ❌ {"message":"...","files":[...]}  ← DO NOT invent response JSON
+  ❌ {"result":"...","data":[...]}    ← DO NOT invent response JSON
+  ❌ {"status":"ok","folders":[...]}  ← DO NOT invent response JSON
+  ❌ Any JSON object without a "tool" key
 
-Incorrect (NEVER do these):
-- "I will call watchedFoldersDeepScan()..."  ← narration
-- \`\`\`json{"tool":"watchedFoldersDeepScan"}\`\`\`  ← backticks
-- {"message":"...","files":[...]}  ← JSON response objects are FORBIDDEN
+RULE 3 — NEVER wrap the JSON in backticks, markdown, or code fences.
+  ❌ \`\`\`json{"tool":"..."}\`\`\`  ← FORBIDDEN
+  ❌ \`{"tool":"..."}\`  ← FORBIDDEN
 
-CRITICAL: The ONLY valid JSON format is {"tool":"<toolName>","args":{...}}. Never output any other JSON structure. If you want to answer in natural language, use plain text — never JSON objects with keys like "message" or "files".
+RULE 4 — NEVER narrate, explain, or describe what you're about to do.
+  ❌ "I will call watchedFoldersDeepScan()..."  ← FORBIDDEN
+  ❌ "Let me scan the folders to find out..."   ← FORBIDDEN
+  ❌ "Here is what I found: ..."                 ← FORBIDDEN (save this for after)
 
-Your entire response must be exactly the JSON object. The system will execute it and return the result, then you can respond naturally.
+CORRECT examples (pure JSON, no extra text):
+  ✅ {"tool":"watchedFoldersDeepScan","args":{}}
+  ✅ {"tool":"folderRead","args":{"path":"C:\\Users\\...\\notes.txt"}}
+  ✅ {"tool":"runCommand","args":{"cmd":"dir"}}
+
+INCORRECT examples (will be IGNORED by the system):
+  ❌ {"message":"Here are the files:","files":[{"name":"a.txt"}]}
+  ❌ I think the answer is {"tool":"watchedFoldersDeepScan","args":{}}
+  ❌ \`\`\`{"tool":"watchedFoldersDeepScan"}\`\`\`
+
+CRITICAL: If you want to answer in natural language, use PLAIN TEXT only.
+If you output a JSON object, it MUST be a tool call and NOTHING else.
 
 Available tools:
 - ollamaPull — args: { model: string }
@@ -605,25 +627,55 @@ Available tools:
 - privacyFix — args: { actionId: string } — execute remediation action
 - watchedFoldersList — args: {} — returns watched folders as JSON
 - watchedFoldersDescribe — args: {} — returns watched folders and their immediate contents as formatted text (top level only, not recursive)
-- watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for any question about file structure, subfolders, or detailed contents.
+- watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for ANY question about subfolders, file structure, directory contents, or "what's inside".
 - browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
 
-## STRICT FILESYSTEM MODE
+╔══════════════════════════════════════════════════════════════╗
+║              STRICT FILESYSTEM MODE                         ║
+╚══════════════════════════════════════════════════════════════╝
 
-For any question that mentions:
-- "watched folders"
-- a specific watched folder label (e.g. "Laken's Files")
-- subfolders, files, documents, or directory contents
-you enter STRICT FILESYSTEM MODE.
+You ENTER STRICT FILESYSTEM MODE when the user asks about:
+• "watched folders" or any specific folder label (e.g. "Laken's Files")
+• "subfolders", "folders", "directory", "directory structure", "folder tree"
+• "what's inside", "what is in", "show me", "list", "contents"
+• "structure", "hierarchy", "organize", "group these files"
+• Any filename, document, PDF, or file you might have seen referenced
 
-In STRICT FILESYSTEM MODE:
-1. Your FIRST response MUST be exactly one of:
-   {"tool":"watchedFoldersDeepScan","args":{}}  — for structure/directory questions
-   {"tool":"folderRead","args":{"path":"..."}}  — for specific file content
-2. You must NOT answer in natural language or describe what you're about to do before the tool result comes back.
-3. After the [FOLDER TREE] result arrives, ONLY mention directory and file names that appear in it. You are FORBIDDEN from guessing or inventing folder names, file names, or contents.
-4. If you cannot find a name the user mentions, say "I don't see X in the actual folder listing" instead of speculating.
-5. For analysis questions ("group these files", "summarize", "reorganize"), use the real tree data to reason from — never hallucinate directories or documents.
+=== WHEN STRICT FILESYSTEM MODE IS ACTIVE, YOU MUST FOLLOW EVERY RULE BELOW ===
+
+[RULE A] TOOL CALL FIRST — Your very first response MUST be exactly:
+  {"tool":"watchedFoldersDeepScan","args":{}}
+You do NOT answer, explain, or narrate. You ONLY output that tool-call JSON.
+Wait for the [FOLDER TREE] result before saying anything else.
+
+[RULE B] NEVER INVENT DATA — After the [FOLDER TREE] arrives, you may ONLY
+reference directory names and file names that ACTUALLY appear in the tree.
+If a name the user mentioned is NOT in the tree, say:
+  "I don't see 'X' in the actual folder listing."
+Do NOT guess. Do NOT embellish. Do NOT invent.
+
+[RULE C] DIRECTORIES FIRST — When describing the folder structure, ALWAYS
+list directories first with "(dir)" suffix, then files. For example:
+  📁 Taxes 2025/ (dir)
+  📁 Documents/ (dir)
+    📄 notes.txt
+    📄 report.pdf
+Use folder icons (📁) for directories, file icons (📄) for files.
+If the user asks about subfolders only, list ONLY directories with (dir)
+and ignore files entirely.
+
+[RULE D] NO RESPONSE JSON — Never output JSON like {"message":...,"files":[...]}
+or any JSON that is not a tool call. If you want to answer, use plain text.
+JSON output = tool call only. Period.
+
+[RULE E] FORCED COMPLIANCE — If you break any of these rules (e.g., you output
+a response JSON, you narrate before the tool call, you invent filenames), the
+system will REJECT your response and force-inject the correct tool data. You
+will have wasted a turn. It is ALWAYS better to just call watchedFoldersDeepScan
+immediately.
+
+SUMMARY: Question about folders → {"tool":"watchedFoldersDeepScan","args":{}}
+→ wait for tree → answer with facts only, directories first.
 `
 
 // ── Tool token regex ──────────────────────────────────────────
@@ -649,21 +701,22 @@ function parseToolTokens(text: string): ToolToken[] {
 
 function parseToolCall(text: string): { tool: string; args: any } | null {
   try {
-    // Scan character-by-character with brace-depth tracking to find the first
-    // complete, balanced JSON object that contains "tool" and is in AGENT_TOOLS.
-    // This avoids the greedy regex bug that grabs from first { to last },
-    // which breaks when the AI appends commentary text after the JSON.
+    // ── Strategy 1: Strip markdown code fences ──
+    // Handle ```json ... ```, ` ... `, or any backtick-wrapped JSON
+    let cleaned = text.replace(/```[a-z]*\n?/gi, '').replace(/`/g, '').trim()
+
+    // ── Strategy 2: Brace-depth scanner (handles text before/after JSON) ──
     let depth = 0
     let start = -1
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i]
+    for (let i = 0; i < cleaned.length; i++) {
+      const ch = cleaned[i]
       if (ch === '{') {
         if (start === -1) start = i
         depth++
       } else if (ch === '}') {
         depth--
         if (depth === 0 && start !== -1) {
-          const candidate = text.slice(start, i + 1)
+          const candidate = cleaned.slice(start, i + 1)
           try {
             const parsed = JSON.parse(candidate)
             if (parsed.tool && parsed.tool in AGENT_TOOLS) return parsed
@@ -672,6 +725,40 @@ function parseToolCall(text: string): { tool: string; args: any } | null {
         }
       }
     }
+
+    // ── Strategy 3: Regex fallback ──
+    // If brace-depth failed, try a targeted regex that finds {"tool":"xxx","args":...
+    // even when embedded in surrounding text that might confuse the scanner.
+    const toolCallRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}/g
+    let match: RegExpExecArray | null
+    while ((match = toolCallRegex.exec(cleaned)) !== null) {
+      const toolName = match[1]
+      if (toolName in AGENT_TOOLS) {
+        try {
+          const args = JSON.parse(match[2])
+          return { tool: toolName, args }
+        } catch {
+          return { tool: toolName, args: {} }
+        }
+      }
+    }
+
+    // ── Strategy 4: Same regex fallback on raw text (if cleaning broke something) ──
+    if (cleaned !== text) {
+      const rawRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}/g
+      while ((match = rawRegex.exec(text)) !== null) {
+        const toolName = match[1]
+        if (toolName in AGENT_TOOLS) {
+          try {
+            const args = JSON.parse(match[2])
+            return { tool: toolName, args }
+          } catch {
+            return { tool: toolName, args: {} }
+          }
+        }
+      }
+    }
+
     return null
   } catch { return null }
 }
@@ -1396,7 +1483,7 @@ function App() {
       label: f.split('\\').pop()?.split('/').pop() || f,
     }))
     const folderContext = watchedFolders.length > 0
-      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE. When the user asks about these folders (e.g. "what is in Laken's Files", "name the subfolders", "analyze Laken's Files"), your FIRST response must be exactly: {"tool":"watchedFoldersDeepScan","args":{}} — no other text. After the [FOLDER TREE] result comes back, refer ONLY to actual names from that tree. Never invent or guess filenames.`
+      ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE. STRICT FILESYSTEM MODE ACTIVE.\nYour FIRST response MUST be exactly:\n  {"tool":"watchedFoldersDeepScan","args":{}}\n— no other text, no narration, no JSON response objects.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nAfter the [FOLDER TREE] arrives, ONLY mention names that appear in it. Never invent.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
@@ -1409,10 +1496,28 @@ function App() {
         ...folderLabels.map(f => f.label.toLowerCase()),
         'watched folder',
         'subfolder',
+        'sub-folder',
+        'sub directory',
+        'subfolder',
+        'folders',
         'folder tree',
         'directory tree',
+        'directory structure',
         'what is in',
-        'tell me about.*files',
+        "what's inside",
+        'whats inside',
+        'tell me about',
+        'list',
+        'contents',
+        'structure',
+        'hierarchy',
+        'show me',
+        'inside',
+        'nested',
+        'deep scan',
+        'scan folder',
+        'file tree',
+        'dir tree',
       ]
       const mentionsWatched = watchedFolders.length > 0 && watchedKeywords.some(kw => userTextLower.includes(kw))
 
@@ -1429,7 +1534,7 @@ function App() {
       if (preScannedData) {
         msgsForAI.push({
           role: 'user',
-          content: `[ATTACHED: REAL FOLDER TREE - obtained from watchedFoldersDeepScan() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nThe above is the ACTUAL filesystem data. Use it to answer the user's question. Do not invent or guess any file or folder names. If the answer isn't in this data, say so.`,
+          content: `[ATTACHED: REAL FOLDER TREE - obtained from watchedFoldersDeepScan() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nINSTRUCTIONS FOR USING THIS DATA:\n1. This is the ACTUAL filesystem data. Do NOT invent or guess any file or folder names.\n2. When describing the structure, list DIRECTORIES FIRST with a "(dir)" suffix (e.g. "Taxes 2025/ (dir)").\n3. Only mention individual files if the user explicitly asks about files.\n4. If the user asks about "subfolders" or "folders", ONLY list directories — ignore files entirely.\n5. If a name the user mentioned is NOT in this data, say: "I don't see 'X' in the actual folder listing."`,
         })
       }
 
