@@ -568,6 +568,11 @@ function App() {
     })
   }, [])
 
+  // ── Sync data-theme attribute on root element ──────────────
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', settingsTheme)
+  }, [settingsTheme])
+
   // ── Persist settings changes back to electron-store ────────
   const persistSetting = (key: string, value: any) => {
     if (!window.settingsAPI) return
@@ -1884,7 +1889,10 @@ function App() {
                   persistSetting('theme', e.target.value)
                 }}
               >
-                <option value="dark">Dark</option>
+                <option value="dark">Default</option>
+                <option value="midnight">Midnight</option>
+                <option value="obsidian">Obsidian</option>
+                <option value="cyber">Cyber</option>
                 <option value="light">Light</option>
               </select>
 

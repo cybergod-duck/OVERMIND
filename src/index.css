@@ -1,7 +1,16 @@
+/* ── Base layout vars (shared across all themes) ────────────── */
 :root {
   --header-h: 48px;
   --sidebar-w: 300px;
   --footer-h: 32px;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DEFAULT — Deep dark with indigo accents
+   ══════════════════════════════════════════════════════════════ */
+:root,
+[data-theme="dark"] {
   --bg: #07080e;
   --surface: #0d0e17;
   --surface-soft: #11121e;
@@ -18,8 +27,132 @@
   --highlight: #ffffff;
   --glass-bg: rgba(13, 14, 23, 0.7);
   --glass-border: rgba(30, 32, 48, 0.6);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0c0d1a 0%, #07080e 50%, #04050a 100%);
+  --header-bg: linear-gradient(to right, #0c0d1a, #0a0b16);
+  --scroll-thumb: #1f2335;
+  --scroll-track: transparent;
+  --sidebar-bg: #0a0b14;
+  --settings-bg: #0c0d16;
+  --settings-border: #1f2335;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   MIDNIGHT — Deeper blacks with electric blue accents
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="midnight"] {
+  --bg: #020308;
+  --surface: #060914;
+  --surface-soft: #0a0e1a;
+  --border: #14182a;
+  --text: #dce1f0;
+  --text-muted: #5a6a8a;
+  --accent: #3b82f6;
+  --accent-soft: #0f1f3a;
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  --danger: #ff5c5c;
+  --danger-soft: rgba(255, 92, 92, 0.1);
+  --user-color: #60a5fa;
+  --user-soft: rgba(96, 165, 250, 0.1);
+  --highlight: #ffffff;
+  --glass-bg: rgba(6, 9, 20, 0.75);
+  --glass-border: rgba(20, 24, 42, 0.6);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #080c1e 0%, #020308 50%, #010105 100%);
+  --header-bg: linear-gradient(to right, #080c1e, #060914);
+  --scroll-thumb: #1a2040;
+  --scroll-track: transparent;
+  --sidebar-bg: #050812;
+  --settings-bg: #080c1e;
+  --settings-border: #1a2040;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   OBSIDIAN — Very dark with magenta + teal accents (premium cyber)
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="obsidian"] {
+  --bg: #050308;
+  --surface: #0c0812;
+  --surface-soft: #110d1a;
+  --border: #1e1030;
+  --text: #e2d8f0;
+  --text-muted: #7a5a9a;
+  --accent: #d946ef;
+  --accent-soft: #2a0f3a;
+  --accent-glow: rgba(217, 70, 239, 0.15);
+  --danger: #f43f5e;
+  --danger-soft: rgba(244, 63, 94, 0.1);
+  --user-color: #14b8a6;
+  --user-soft: rgba(20, 184, 166, 0.1);
+  --highlight: #f0e6ff;
+  --glass-bg: rgba(12, 8, 18, 0.75);
+  --glass-border: rgba(30, 16, 48, 0.6);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #10081e 0%, #050308 50%, #020105 100%);
+  --header-bg: linear-gradient(to right, #10081e, #0c0812);
+  --scroll-thumb: #2a1040;
+  --scroll-track: transparent;
+  --sidebar-bg: #080510;
+  --settings-bg: #0c0812;
+  --settings-border: #1e1030;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CYBER — Neon cyan/purple, high contrast futuristic
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="cyber"] {
+  --bg: #000510;
+  --surface: #060b1a;
+  --surface-soft: #0a1025;
+  --border: #1a2040;
+  --text: #dce6ff;
+  --text-muted: #5a7aaa;
+  --accent: #22d3ee;
+  --accent-soft: #0a203a;
+  --accent-glow: rgba(34, 211, 238, 0.18);
+  --danger: #ff4444;
+  --danger-soft: rgba(255, 68, 68, 0.12);
+  --user-color: #a78bfa;
+  --user-soft: rgba(167, 139, 250, 0.12);
+  --highlight: #ffffff;
+  --glass-bg: rgba(6, 11, 26, 0.75);
+  --glass-border: rgba(26, 32, 64, 0.6);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0a1030 0%, #000510 50%, #000208 100%);
+  --header-bg: linear-gradient(to right, #0a1030, #060b1a);
+  --scroll-thumb: #1a2880;
+  --scroll-track: transparent;
+  --sidebar-bg: #040818;
+  --settings-bg: #060b1a;
+  --settings-border: #1a2040;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT — Clean, modern light mode
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-soft: #f0f0f5;
+  --border: #d1d1d6;
+  --text: #1c1c1e;
+  --text-muted: #8e8e93;
+  --accent: #6366f1;
+  --accent-soft: #e8e8ff;
+  --accent-glow: rgba(99, 102, 241, 0.08);
+  --danger: #ff3b30;
+  --danger-soft: rgba(255, 59, 48, 0.08);
+  --user-color: #3b82f6;
+  --user-soft: rgba(59, 130, 246, 0.06);
+  --highlight: #1c1c1e;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(209, 209, 214, 0.6);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #e8e8f0 0%, #f2f2f7 50%, #fafafa 100%);
+  --header-bg: linear-gradient(to right, #ffffff, #f5f5f7);
+  --scroll-thumb: #c7c7cc;
+  --scroll-track: transparent;
+  --sidebar-bg: #f8f8fa;
+  --settings-bg: #ffffff;
+  --settings-border: #d1d1d6;
+}
+
+/* ── Global reset & base ──────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
@@ -27,10 +160,26 @@
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(ellipse at 50% 0%, #0c0d1a 0%, #07080e 50%, #04050a 100%);
+  background: var(--bg-gradient);
   color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   letter-spacing: 0.02em;
   overflow: hidden;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+/* ── Scrollbar (shared) ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scroll-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.3);
 }
