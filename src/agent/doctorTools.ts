@@ -214,13 +214,11 @@ async function runNetworkDiagnostics(query: string): Promise<DoctorDiagnosis> {
   // If full network diag failed, run fallback
   if (findings.length === 0) {
     console.log('[DOCTOR] Full network diag returned no data, running fallback...')
-    const basicNet = await safeTool('doctorBasicNetworkDiag')
-    rawData.basicNetwork = basicNet.data
-    if (basicNet.success && basicNet.data) {
-      findings.push({ icon: 'ℹ️', title: 'Basic Network Test', detail: typeof basicNet.data === 'string' ? basicNet.data.slice(0, 200) : 'Completed', severity: 'info' })
-    }
     const sysInfo = await safeTool('doctorSystemInfo')
     rawData.systemInfo = sysInfo.data
+    if (sysInfo.success && sysInfo.data) {
+      findings.push({ icon: 'ℹ️', title: 'System Info', detail: `Gathered system info as fallback`, severity: 'info' })
+    }
   }
 
   // Build summary
@@ -269,16 +267,16 @@ async function runPerformanceDiagnostics(query: string): Promise<DoctorDiagnosis
       }
     }
 
-    // Only flag processes actually using significant CPU (>5%)
+    // Only flag processes actually using significant CPU (>10%)
     if (d.topCpu?.length) {
-      const highCpu = d.topCpu.filter((p: any) => p.cpu > 5)
+      const highCpu = d.topCpu.filter((p: any) => p.cpu > 10)
       if (highCpu.length > 0) {
-        const details = highCpu.slice(0, 5).map((p: any) =>
-          `${p.name} (PID ${p.pid}) — ${p.cpu.toFixed(1)}% CPU`
+        const details = highCpu.slice(0, 7).map((p: any) =>
+          `${p.name} (PID ${p.pid}) — ${p.cpu.toFixed(1)}% CPU, ${mbToGB(p.memMB)} RAM`
         ).join('\n         ')
         findings.push({
           icon: highCpu[0].cpu > 30 ? '🔴' : '🟡',
-          title: `Top CPU Users (${highCpu.length} process${highCpu.length > 1 ? 'es' : ''} >5%)`,
+          title: `Top CPU Users (${highCpu.length} proc${highCpu.length > 1 ? 'es' : ''} >10%)`,
           severity: highCpu[0].cpu > 30 ? 'warning' : 'info',
           detail: details,
         })
@@ -299,12 +297,12 @@ async function runPerformanceDiagnostics(query: string): Promise<DoctorDiagnosis
     if (d.topMem?.length) {
       const highMem = d.topMem.filter((p: any) => p.memMB > 200)
       if (highMem.length > 0) {
-        const details = highMem.slice(0, 5).map((p: any) =>
-          `${p.name} (PID ${p.pid}) — ${mbToGB(p.memMB)}`
+        const details = highMem.slice(0, 7).map((p: any) =>
+          `${p.name} (PID ${p.pid}) — ${mbToGB(p.memMB)} RAM`
         ).join('\n         ')
         findings.push({
           icon: highMem[0].memMB > 1000 ? '🟡' : 'ℹ️',
-          title: `Top RAM Users (${highMem.length} process${highMem.length > 1 ? 'es' : ''} >200MB)`,
+          title: `Top RAM Users (${highMem.length} proc${highMem.length > 1 ? 'es' : ''} >200MB)`,
           severity: highMem[0].memMB > 1000 ? 'warning' : 'info',
           detail: details,
         })
@@ -558,14 +556,14 @@ async function runGeneralDiagnostics(query: string): Promise<DoctorDiagnosis> {
     }
     // Show actual high-CPU processes
     if (d.topCpu?.length) {
-      const highCpu = d.topCpu.filter((p: any) => p.cpu > 5)
+      const highCpu = d.topCpu.filter((p: any) => p.cpu > 10)
       if (highCpu.length > 0) {
-        const details = highCpu.slice(0, 5).map((p: any) =>
+        const details = highCpu.slice(0, 7).map((p: any) =>
           `${p.name} (PID ${p.pid}) — ${p.cpu.toFixed(1)}% CPU, ${mbToGB(p.memMB)} RAM`
         ).join('\n         ')
         findings.push({
           icon: '🔥',
-          title: `Active Processes (>5% CPU)`,
+          title: `Active Processes (>10% CPU)`,
           severity: 'info',
           detail: details,
         })
