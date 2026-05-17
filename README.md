@@ -1,8 +1,8 @@
-# LOCKBOX — Sovereign AI Utility
+# Overmind — Personal AI For Your PC
 
-**Version:** 4.0.0 | **Author:** BC Research
+**Version:** 4.0.0 | **Author:** Overmind
 
-LOCKBOX is a desktop AI client that runs **fully local-first** — bringing together multi-provider AI chat, an encrypted credentials vault, system diagnostics, a privacy-forensics module, and a first-run setup wizard into a single Electron application.
+Overmind is a desktop AI client that runs **fully local-first** — bringing together multi-provider AI chat, an encrypted credentials vault, system diagnostics, a privacy-forensics module, and a first-run setup wizard into a single Electron application.
 
 > **No cloud dependency.** Your data, your keys, your models — all behind a context-isolated renderer with zero direct Node.js access.
 
@@ -54,6 +54,7 @@ Real-time system health diagnostics:
 - **.env Export** — write vault entries to an `api_keys.env` file
 - **Model Puller** — download Ollama models directly from the UI
 - **Auto-Diagnostics** — automatically runs on each AI message when enabled
+- **Intelligent Diagnostic Chains** — automated multi-step diagnosis for network, performance, system health, and general queries
 
 ### 📁 Watched Folders
 
@@ -61,7 +62,7 @@ Real-time system health diagnostics:
 - List directory contents (formatted as a tree)
 - Read file contents (up to 100KB)
 - Open folders in Explorer
-- Agent can list/read watched folders via `[TOOL:LIST_FOLDER]`
+- Agent can list/read watched folders via tool-call system
 
 ### 🔍 Privacy Sentinel
 
@@ -75,7 +76,7 @@ A **local privacy-forensics and persistence-scanning module** that runs entirely
 | **DNS Config Audit** | Checks configured DNS servers via `ipconfig /all` — flags non-standard or known-tracking resolvers, checks DoH (DNS-over-HTTPS) registry keys, measures resolution time |
 | **Scan History** | Last 10 scans stored in `electron-store` |
 
-Privacy Sentinel is also available as an **agent tool** — the AI can trigger a full scan via `[TOOL:PRIVACY_SCAN]` and interpret results.
+Privacy Sentinel is also available as an **agent tool** — the AI can trigger a full scan and interpret results.
 
 ### 🚀 First-Run Setup Wizard
 
@@ -90,7 +91,7 @@ Real-time streaming logs via IPC with ANSI/CR normalization — no garbled outpu
 ### 🔄 Agent Loop
 
 Toggleable agent mode that enables **autonomous tool use**:
-- AI can call `[TOOL:DIAGNOSE_NETWORK]`, `[TOOL:DIAGNOSE_SYSTEM]`, `[TOOL:LIST_FOLDER]`, `[TOOL:PRIVACY_SCAN]`
+- AI can call diagnostic, folder, privacy, and system tools
 - Results are fed back to the AI for interpretation
 - Loop continues until no more tool calls are emitted
 - Fully controllable — disable with one toggle
@@ -106,7 +107,7 @@ Toggleable agent mode that enables **autonomous tool use**:
 │                                                     │
 │  - electron-store (persistent settings)              │
 │  - 6 IPC handler groups (settings, folders,          │
-│    system, setup, lockbox tools, privacy)            │
+│    system, setup, tools, privacy)                    │
 │  - Child process spawning (ollama, powershell, etc.) │
 │  - Only process with Node.js/filesystem access       │
 └──────────────────┬──────────────────────────────────┘
@@ -134,7 +135,7 @@ Toggleable agent mode that enables **autonomous tool use**:
 | `window.settingsAPI` | `settings:get/set/getAll/reset` | Persistent settings via electron-store |
 | `window.folderAPI` | `folder:pick/list/readFile/openInExplorer/addWatched/getWatched/removeWatched` | Filesystem access |
 | `window.systemAPI` | `system:health/ollama-pull/ollama-list/write-env/kill-port/run-command` | System operations |
-| `window.lockboxTools` | `lockbox:diagnoseNetwork/diagnoseSystem/listFolder` | Legacy diagnostics |
+| `window.doctorAPI` | `doctor:*` channels | System Doctor diagnostics |
 | `window.setupAPI` | `setup:check-ollama-installed/check-disk-space/install-ollama/ollama-pull` + streaming `onLog` | First-run wizard |
 | `window.privacyAPI` | `privacy:scan-startup/scan-hosts/scan-processes/scan-dns-config/scan-summary/get-history` | Privacy Sentinel |
 
@@ -189,7 +190,7 @@ npm run electron:build
 ## Project Structure
 
 ```
-LOCKBOX/
+Overmind/
 ├── electron-main.cjs          # Electron main process (810 lines)
 ├── preload.cjs                # Context bridge (59 lines)
 ├── index.html                 # Vite entry HTML
@@ -255,4 +256,4 @@ For detailed documentation covering IPC handler signatures, setup wizard state m
 
 ## License
 
-Proprietary — BC Research. All rights reserved.
+Proprietary — Overmind. All rights reserved.

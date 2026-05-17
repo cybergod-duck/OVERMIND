@@ -1668,7 +1668,7 @@ ipcMain.handle('doctor:backupFolders', async () => {
     const watchedFoldersList = store.get('watchedFolders', [])
     if (watchedFoldersList.length === 0) return { success: false, error: 'No watched folders to backup' }
 
-    const backupDir = path.join(os.homedir(), 'Desktop', `LOCKBOX_Backup_${new Date().toISOString().split('T')[0]}`)
+    const backupDir = path.join(os.homedir(), 'Desktop', `Overmind_Backup_${new Date().toISOString().split('T')[0]}`)
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true })
 
     const results = []

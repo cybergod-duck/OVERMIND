@@ -1,8 +1,8 @@
 {
-  "name": "lockbox",
+  "name": "overmind",
   "version": "4.0.0",
-  "author": "BC Research",
-  "description": "Sovereign AI Utility",
+  "author": "Overmind",
+  "description": "Personal AI For Your PC",
   "private": true,
   "type": "module",
   "main": "electron-main.cjs",
@@ -14,8 +14,8 @@
     "preview": "vite preview"
   },
   "build": {
-    "appId": "ai.lockbox",
-    "productName": "LOCKBOX",
+    "appId": "ai.overmind",
+    "productName": "Overmind",
     "files": [
       "dist",
       "electron-main.cjs",

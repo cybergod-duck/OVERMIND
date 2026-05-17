@@ -337,7 +337,7 @@ function generateRemediationActions(result: PrivacySummaryResult): void {
 
 // ── Constants ──────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are LOCKBOX, a local system operator assistant.
+const SYSTEM_PROMPT = `You are Overmind, a local system operator assistant.
 
 ## Core Instructions
 
@@ -1260,7 +1260,7 @@ function App() {
     const runChecks = async () => {
       setSetupPhase('running-checks')
       addSetupLog('═══════════════════════════════════════════')
-      addSetupLog('  LOCKBOX — First-Run Setup')
+      addSetupLog('  Overmind — First-Run Setup')
       addSetupLog('═══════════════════════════════════════════')
       addSetupLog('')
 
@@ -1470,7 +1470,7 @@ function App() {
     }
 
     addSetupLog('')
-    addSetupLog('Starting LOCKBOX...')
+    addSetupLog('Starting Overmind...')
 
     // Short delay so user sees the completion message
     await new Promise(r => setTimeout(r, 1500))
@@ -1513,7 +1513,7 @@ function App() {
         <div className="setup-panel">
           <div className="setup-header">
             <Terminal size={16} />
-            <span>LOCKBOX SETUP v4.0</span>
+            <span>OVERMIND SETUP v4.0</span>
             <span className="setup-header-phase">{setupPhase.replace(/-/g, ' ').toUpperCase()}</span>
           </div>
 
@@ -1598,7 +1598,7 @@ function App() {
             {setupPhase === 'complete' && (
               <div className="setup-prompt">
                 <div className="setup-prompt-text setup-prompt-success">
-                  ✓ Setup complete! Launching LOCKBOX...
+                  ✓ Setup complete! Launching Overmind...
                 </div>
               </div>
             )}
@@ -1622,7 +1622,7 @@ function App() {
   return (
     <div className="lockbox">
       <header className="header">
-        <div className="logo">LOCKBOX</div>
+        <div className="logo">Overmind</div>
         <div className="status">
           <span className="dot" />
           SOVEREIGN_ADMIN_ACTIVE
@@ -1727,7 +1727,7 @@ function App() {
               <div className="settings-label">CUSTOM_SYSTEM_PROMPT</div>
               <textarea
                 className="settings-textarea"
-                placeholder="Instructions prepended before the default LOCKBOX system prompt…"
+                placeholder="Instructions prepended before the default Overmind system prompt…"
                 value={customPrompt}
                 onChange={e => {
                   setCustomPrompt(e.target.value)
@@ -2547,8 +2547,8 @@ function App() {
 
                   {/* Disclaimer */}
                   <div className="privacy-disclaimer">
-                    LOCKBOX provides read-only access and safe navigation tools. Destructive actions (e.g., Kill Process)
-                    require explicit confirmation. LOCKBOX will never auto-execute destructive actions — the agent must
+                    Overmind provides read-only access and safe navigation tools. Destructive actions (e.g., Kill Process)
+                    require explicit confirmation. Overmind will never auto-execute destructive actions — the agent must
                     present them for your review via the chat interface or sidebar buttons.
                   </div>
 
@@ -2598,7 +2598,7 @@ function App() {
         <div className="content">
           <div className="chat" ref={chatRef}>
             {messages.length === 0 ? (
-              <div className="idle">LOCKBOX_ONLINE</div>
+              <div className="idle">OVERMIND_ONLINE</div>
             ) : (
               messages.map((m, i) => (
                 <div key={i} className={`msg msg-${m.role}`}>

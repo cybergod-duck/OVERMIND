@@ -1,10 +1,10 @@
-# LOCKBOX Browser Bridge Protocol
+# Overmind Browser Bridge Protocol
 
 **Version:** 1.0.0  
 **Port:** `ws://localhost:3002`  
 **Transport:** WebSocket, JSON lines
 
-This document defines the message protocol between the LOCKBOX Electron app and a companion browser extension (Manifest V3). The bridge enables the AI agent to observe browser context and perform actions in the active tab.
+This document defines the message protocol between the Overmind Electron app and a companion browser extension (Manifest V3). The bridge enables the AI agent to observe browser context and perform actions in the active tab.
 
 ---
 
@@ -12,7 +12,7 @@ This document defines the message protocol between the LOCKBOX Electron app and 
 
 ```
 ┌──────────────────┐         WebSocket          ┌──────────────────┐
-│   LOCKBOX App    │ ◄──────────────────────►   │ Browser Extension│
+│   Overmind App   │ ◄──────────────────────►   │ Browser Extension│
 │  (Electron Main) │       ws://localhost:3002   │  (Manifest V3)   │
 │                  │                             │                  │
 │  - WebSocket     │   BROWSER_CONTEXT  ◄───────│  - Send tab info │
@@ -21,14 +21,14 @@ This document defines the message protocol between the LOCKBOX Electron app and 
 │    renderer      │   BROWSER_ACTION  ────────►│  - Execute click │
 │                  │   REQUEST_CONTEXT ────────►│  - Execute type  │
 └──────────────────┘                             │  - Scroll/Scrape │
-                                                 └──────────────────┘
+                                                  └──────────────────┘
 ```
 
 ---
 
 ## Connection
 
-1. The LOCKBOX Electron app starts a WebSocket server on `ws://localhost:3002` when the app launches.
+1. The Overmind Electron app starts a WebSocket server on `ws://localhost:3002` when the app launches.
 2. The browser extension connects to `ws://localhost:3002`.
 3. On connection, the extension sends a `PING` message. The app responds with `PONG`.
 4. The app tracks connected clients. The renderer polls `browserAPI.getStatus()` every 10 seconds.
@@ -38,11 +38,11 @@ This document defines the message protocol between the LOCKBOX Electron app and 
 
 ## Message Types
 
-### From Browser Extension → LOCKBOX
+### From Browser Extension → Overmind
 
 #### `BROWSER_CONTEXT`
 
-Sent periodically (e.g., on tab switch, URL change, or user selection) to inform LOCKBOX of the active tab's state.
+Sent periodically (e.g., on tab switch, URL change, or user selection) to inform Overmind of the active tab's state.
 
 ```json
 {
@@ -90,11 +90,11 @@ Sent on connect and periodically to keep the connection alive.
 
 ---
 
-### From LOCKBOX → Browser Extension
+### From Overmind → Browser Extension
 
 #### `BROWSER_ACTION`
 
-Sent by the LOCKBOX AI agent when it decides to interact with the browser page. The extension receives this and executes the action in the active tab.
+Sent by the Overmind AI agent when it decides to interact with the browser page. The extension receives this and executes the action in the active tab.
 
 ```json
 {
@@ -199,7 +199,7 @@ When building the Manifest V3 extension, follow these guidelines:
 ```json
 {
   "manifest_version": 3,
-  "name": "LOCKBOX Bridge",
+  "name": "Overmind Bridge",
   "version": "1.0.0",
   "permissions": [
     "activeTab",
@@ -212,7 +212,7 @@ When building the Manifest V3 extension, follow these guidelines:
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "LOCKBOX Bridge"
+    "default_title": "Overmind Bridge"
   }
 }
 ```
@@ -239,7 +239,7 @@ When building the Manifest V3 extension, follow these guidelines:
 ## TypeScript Types Reference
 
 ```typescript
-// Messages from browser extension → LOCKBOX
+// Messages from browser extension → Overmind
 type BrowserToAppMessage =
   | {
       type: 'BROWSER_CONTEXT'
@@ -264,7 +264,7 @@ type BrowserToAppMessage =
       timestamp: number
     }
 
-// Messages from LOCKBOX → browser extension
+// Messages from Overmind → browser extension
 type AppToBrowserMessage =
   | {
       type: 'BROWSER_ACTION'
