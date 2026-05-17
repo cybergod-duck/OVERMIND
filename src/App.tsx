@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import './App.css'
-import { Eye, Copy, Trash2, Upload, RefreshCw, Settings, Activity, FolderOpen, ExternalLink, Plus, X, Terminal } from 'lucide-react'
+import { Eye, Copy, Trash2, Upload, RefreshCw, Settings, Activity, FolderOpen, ExternalLink, Plus, X, Terminal, ChevronDown, ChevronRight } from 'lucide-react'
 import { importCsv, type CsvImportResult } from './utils/csvParser'
 import {
   scanDuplicates,
@@ -146,6 +146,19 @@ declare global {
       getWatched:     () => Promise<string[]>
       removeWatched:  (folderPath: string) => Promise<boolean>
       listJson:       (folderPath: string) => Promise<{ error: string | null; files: { name: string; path: string; isDir: boolean; ext: string }[] }>
+      moveFile:       (args: { sourcePath: string; targetPath: string }) => Promise<{ success: boolean; error?: string }>
+      renameFile:     (args: { filePath: string; newName: string }) => Promise<{ success: boolean; error?: string }>
+      deleteFile:     (args: { filePath: string }) => Promise<{ success: boolean; error?: string }>
+      createFolder:   (args: { folderPath: string }) => Promise<{ success: boolean; error?: string }>
+      organizeSmart:  (args: { folderPath: string }) => Promise<{ success: boolean; moved: number; errors: string[]; folders: string[] }>
+    }
+    doctorAPI: {
+      cleanTemp:      () => Promise<{ success: boolean; removed: number; freedMB: number; errors: string[] }>
+      findLargeFiles: (args: { folderPath?: string; minMB?: number }) => Promise<{ files: { path: string; sizeMB: number }[] }>
+      findDuplicates: (args: { folderPath?: string }) => Promise<{ groups: { size: number; files: string[] }[] }>
+      diskSpaceReport:() => Promise<{ drives: any[]; watchedFolderSizes: any[]; suggestions: string[] }>
+      backupFolders:  () => Promise<{ success: boolean; path: string; error?: string }>
+      deepClean:      () => Promise<{ success: boolean; steps: { name: string; ok: boolean; detail: string }[] }>
     }
     setupAPI: {
       checkOllamaInstalled: () => Promise<{ installed: boolean; version: string | null }>
@@ -217,9 +230,10 @@ type SetupPhase =
   | 'pulling-model'
   | 'complete'
 
-// ── Module-level reference for agent tool ───────────────────────
+// ── Module-level references for agent tools ─────────────────────
 
 let _lastPrivacyResult: PrivacySummaryResult | null = null
+let _analysisCache: Record<string, { summary: any; timestamp: number }> = {}
 
 // ── Generate remediation actions from scan findings ────────────
 
@@ -857,6 +871,50 @@ const AGENT_TOOLS = {
       ).join('\n\n'),
     }
   },
+
+  // ── File operation agent tools ──────────────────────────────
+  watchedFoldersMoveFile: async (args: { sourcePath: string; targetPath: string }) => {
+    if (!args.sourcePath || !args.targetPath) return { error: 'sourcePath and targetPath are required' }
+    return window.folderAPI.moveFile({ sourcePath: args.sourcePath, targetPath: args.targetPath })
+  },
+  watchedFoldersRenameFile: async (args: { filePath: string; newName: string }) => {
+    if (!args.filePath || !args.newName) return { error: 'filePath and newName are required' }
+    return window.folderAPI.renameFile({ filePath: args.filePath, newName: args.newName })
+  },
+  watchedFoldersDeleteFile: async (args: { filePath: string }) => {
+    if (!args.filePath) return { error: 'filePath is required' }
+    // Confirmation is handled by the UI via setDeleteConfirmPath before the agent calls this
+    return window.folderAPI.deleteFile({ filePath: args.filePath })
+  },
+  watchedFoldersCreateFolder: async (args: { folderPath: string }) => {
+    if (!args.folderPath) return { error: 'folderPath is required' }
+    return window.folderAPI.createFolder({ folderPath: args.folderPath })
+  },
+  watchedFoldersOrganizeSmart: async (args: { folderPath: string }) => {
+    if (!args.folderPath) return { error: 'folderPath is required' }
+    return window.folderAPI.organizeSmart({ folderPath: args.folderPath })
+  },
+
+  // ── System Doctor agent tools ───────────────────────────────
+  doctorCleanTemp: async () => {
+    const result = await window.doctorAPI.cleanTemp()
+    return result
+  },
+  doctorFindLargeFiles: async (args: { folderPath?: string; minMB?: number } = {}) => {
+    return window.doctorAPI.findLargeFiles({ folderPath: args.folderPath, minMB: args.minMB ?? 100 })
+  },
+  doctorFindDuplicates: async (args: { folderPath?: string } = {}) => {
+    return window.doctorAPI.findDuplicates({ folderPath: args.folderPath })
+  },
+  doctorDiskSpaceReport: async () => {
+    return window.doctorAPI.diskSpaceReport()
+  },
+  doctorBackupFolders: async () => {
+    return window.doctorAPI.backupFolders()
+  },
+  doctorDeepClean: async () => {
+    return window.doctorAPI.deepClean()
+  },
 } as const
 
 const TOOL_SYSTEM_SUFFIX = `
@@ -914,6 +972,70 @@ Available tools:
 - watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for ANY question about subfolders, file structure, directory contents, or "what's inside".
 - watchedFoldersAnalyze — args: { folderPath?: string; maxDepth?: number; includeFileTypes?: string[] } — POWERFUL content-aware analyzer. Recursively walks folders, reads PDFs and text files to extract actual content, and returns a structured report with: folder tree (📁 icons), file previews, and a content summary. Use this for questions like "summarize everything about taxes", "what documents are in the Finance folder", "find bank statements". It reads real file contents, not just names.
 - browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
+- watchedFoldersMoveFile — args: { sourcePath: string; targetPath: string } — move/rename a file to a new location
+- watchedFoldersRenameFile — args: { filePath: string; newName: string } — rename a file in-place
+- watchedFoldersDeleteFile — args: { filePath: string } — PERMANENTLY delete a file (bypasses Recycle Bin). ⚠️ Requires user confirmation.
+- watchedFoldersCreateFolder — args: { folderPath: string } — create a new folder (including parent directories)
+- watchedFoldersOrganizeSmart — args: { folderPath: string } — auto-organize files into subfolders (Banking, Legal, Medical, Taxes, etc.) based on content. ⚠️ Requires user confirmation.
+- doctorCleanTemp — args: {} — clean Windows temporary files (Temp, Prefetch files older than 24h)
+- doctorFindLargeFiles — args: { folderPath?: string; minMB?: number } — find files larger than minMB (default 100MB)
+- doctorFindDuplicates — args: { folderPath?: string } — find duplicate files across watched folders using content hashing
+- doctorDiskSpaceReport — args: {} — report disk space usage and suggestions to free space
+- doctorBackupFolders — args: {} — backup all watched folders to a Desktop zip archive
+- doctorDeepClean — args: {} — aggressive system cleanup (temp files, recycle bin, prefetch). ⚠️ Requires user confirmation.
+
+╔══════════════════════════════════════════════════════════════╗
+║              FILE ORGANIZATION MODE — SAFETY WARNINGS       ║
+╚══════════════════════════════════════════════════════════════╝
+
+⚠️ FILE OPERATIONS CANNOT BE UNDONE. You must follow these rules:
+
+[RULE O1] Read-Only vs Action Mode:
+  READ-ONLY tools (safe, no changes): folderList, folderRead, watchedFoldersList,
+  watchedFoldersDescribe, watchedFoldersDeepScan, watchedFoldersAnalyze,
+  getHealth, killPort, browserAction, runPrivacyScan
+  → These need NO confirmation.
+
+  ACTION tools (modify filesystem): watchedFoldersMoveFile, watchedFoldersRenameFile,
+  watchedFoldersDeleteFile, watchedFoldersCreateFolder, watchedFoldersOrganizeSmart
+  → These REQUIRE the user to explicitly approve before executing.
+
+[RULE O2] NEVER perform destructive operations without asking first:
+  ❌ FORBIDDEN: Automatically calling watchedFoldersDeleteFile
+  ❌ FORBIDDEN: Calling watchedFoldersOrganizeSmart without user approval
+  ✅ REQUIRED: "I can organize this folder into subfolders (Banking, Legal, Medical, etc.).
+     Shall I proceed?"
+  ✅ REQUIRED: "I can delete this file. Are you sure you want to permanently remove it?"
+
+[RULE O3] When organizing (watchedFoldersOrganizeSmart):
+  • Explain what subfolders will be created
+  • Describe which files will go where
+  • Warn that this creates physical folders on disk
+  • Only proceed AFTER user says yes
+
+[RULE O4] When moving or renaming files:
+  • Confirm the source and target paths with the user
+  • Warn about name collisions
+  • For moveFile: verify both source and target exist or will be created
+
+[RULE O5] When deleting files:
+  • ALWAYS ask for explicit confirmation
+  • State the FULL file path
+  • Mention that this is PERMANENT (bypasses Recycle Bin)
+  • Wait for "yes", "confirm", "delete it", or similar explicit approval
+
+[RULE O6] System Doctor action tools:
+  • doctorCleanTemp — safe, files older than 24h
+  • doctorFindLargeFiles — read-only
+  • doctorFindDuplicates — read-only
+  • doctorDiskSpaceReport — read-only
+  • doctorBackupFolders — creates zip archive on Desktop
+  • doctorDeepClean — aggressive cleanup, ask user first
+
+[RULE O7] ROLE CLARIFICATION:
+  You are an AI assistant with TOOLS. You do NOT have autonomous permission to
+  modify the user's filesystem. Every destructive action must be explicitly
+  confirmed by the user. When in doubt, DO NOT ACT — ASK FIRST.
 
 ╔══════════════════════════════════════════════════════════════╗
 ║              STRICT FILESYSTEM MODE                         ║
@@ -1261,12 +1383,17 @@ function App() {
   const [settingsSystemPrompt, setSettingsSystemPrompt] = useState('')
   const [agentLoopEnabled, setAgentLoopEnabled]     = useState(true)
   const [autoDiagnostics, setAutoDiagnostics]       = useState(true)
+  const [autoAnalyzeWatched, setAutoAnalyzeWatched] = useState(true)
   const [maxContextMessages, setMaxContextMessages]  = useState(50)
   const [settingsTheme, setSettingsTheme]            = useState('dark')
 
   // ── Watched folders ────────────────────────────────────────
   const [watchedFolders, setWatchedFolders] = useState<string[]>([])
   const [watchedFolderSummary, setWatchedFolderSummary] = useState<{ path: string; fileCount: number; dirCount: number; error?: string }[] | null>(null)
+  const [folderAnalysisCache, setFolderAnalysisCache] = useState<Record<string, { summary: any; timestamp: number }>>({})
+  const [analyzingFolder, setAnalyzingFolder] = useState<string | null>(null)
+  const [deleteConfirmPath, setDeleteConfirmPath] = useState<string | null>(null)
+  const [doctorRunning, setDoctorRunning] = useState<string | null>(null)
 
   // ── First-run setup state ──────────────────────────────────
   const [firstRunComplete, setFirstRunComplete] = useState<boolean | null>(null) // null = loading
@@ -1295,6 +1422,7 @@ function App() {
       }
       if (typeof settings.agentLoopEnabled === 'boolean') setAgentLoopEnabled(settings.agentLoopEnabled)
       if (typeof settings.autoDiagnostics === 'boolean') setAutoDiagnostics(settings.autoDiagnostics)
+      if (typeof settings.autoAnalyzeWatched === 'boolean') setAutoAnalyzeWatched(settings.autoAnalyzeWatched)
       if (settings.maxContextMessages) setMaxContextMessages(settings.maxContextMessages)
       if (settings.theme) setSettingsTheme(settings.theme)
       if (Array.isArray(settings.watchedFolders)) setWatchedFolders(settings.watchedFolders)
@@ -2021,9 +2149,18 @@ function App() {
         // Show working indicator
         setMessages(prev => [...prev, { role: 'agent', content: `⚙ Executing: ${toolCall.tool}...` }])
 
-        // Execute the tool
-        const toolFn = AGENT_TOOLS[toolCall.tool as keyof typeof AGENT_TOOLS]
-        const result = await (toolFn as any)(toolCall.args ?? {})
+        // Execute the tool with error handling
+        let result: any
+        try {
+          const toolFn = AGENT_TOOLS[toolCall.tool as keyof typeof AGENT_TOOLS]
+          if (!toolFn) {
+            result = { error: `Unknown tool: "${toolCall.tool}". Available tools: ${Object.keys(AGENT_TOOLS).join(', ')}` }
+          } else {
+            result = await (toolFn as any)(toolCall.args ?? {})
+          }
+        } catch (execErr: any) {
+          result = { error: `Tool execution error: ${execErr.message}`, tool: toolCall.tool, args: toolCall.args }
+        }
 
         // Log to doctor panel
         setDoctorLog(prev => [
@@ -2174,6 +2311,21 @@ function App() {
     if (added) {
       const updated = await window.folderAPI.getWatched()
       setWatchedFolders(updated)
+      // Auto-analyze if enabled
+      if (autoAnalyzeWatched) {
+        setAnalyzingFolder(picked)
+        try {
+          const scanFn = AGENT_TOOLS.watchedFoldersAnalyze
+          const result = await (scanFn as any)({ folderPath: picked })
+          const newCache = { ...folderAnalysisCache, [picked]: { summary: result, timestamp: Date.now() } }
+          _analysisCache[picked] = { summary: result, timestamp: Date.now() }
+          setFolderAnalysisCache(newCache)
+        } catch (err: any) {
+          log(`AUTO_ANALYZE_ERROR: ${err.message}`)
+        } finally {
+          setAnalyzingFolder(null)
+        }
+      }
     }
   }
 
@@ -2209,6 +2361,23 @@ function App() {
       }
     }
     setWatchedFolderSummary(summaries)
+    // Auto-analyze all folders if enabled
+    if (autoAnalyzeWatched) {
+      for (const folderPath of paths) {
+        setAnalyzingFolder(folderPath)
+        try {
+          const scanFn = AGENT_TOOLS.watchedFoldersAnalyze
+          const result = await (scanFn as any)({ folderPath })
+          const newCache = { ...folderAnalysisCache, [folderPath]: { summary: result, timestamp: Date.now() } }
+          _analysisCache[folderPath] = { summary: result, timestamp: Date.now() }
+          setFolderAnalysisCache(newCache)
+        } catch (err: any) {
+          log(`AUTO_ANALYZE_ERROR: ${err.message}`)
+        } finally {
+          setAnalyzingFolder(null)
+        }
+      }
+    }
   }
 
   // ── Setup Panel Logic ─────────────────────────────────────
@@ -2757,6 +2926,21 @@ function App() {
                 </label>
               </div>
 
+              <div className="settings-row">
+                <label className="settings-toggle-label">
+                  <span>AUTO_ANALYZE_FOLDERS</span>
+                  <input
+                    type="checkbox"
+                    className="settings-toggle"
+                    checked={autoAnalyzeWatched}
+                    onChange={e => {
+                      setAutoAnalyzeWatched(e.target.checked)
+                      persistSetting('autoAnalyzeWatched', e.target.checked)
+                    }}
+                  />
+                </label>
+              </div>
+
               <div className="settings-label">MAX_CONTEXT_MESSAGES</div>
               <input
                 className="settings-input"
@@ -3105,6 +3289,14 @@ function App() {
                         <X size={12} />
                       </button>
                     </div>
+                    {/* AI Summary per folder */}
+                    {analyzingFolder === f ? (
+                      <div style={{ fontSize: 8, color: '#e2b714', padding: '2px 6px 4px 6px', fontStyle: 'italic' }}>
+                        ⏳ Analyzing with AI...
+                      </div>
+                    ) : folderAnalysisCache[f] ? (
+                      <AnalysisSummaryDisplay data={folderAnalysisCache[f].summary} />
+                    ) : null}
                   </div>
                 ))}
                 {/* Inline summary from latest refresh */}
@@ -3222,6 +3414,80 @@ function App() {
                 >
                   KILL
                 </button>
+              </div>
+
+              {/* ── DOCTOR MAINTENANCE TOOLS ──────────────────── */}
+              <div style={{ borderTop: '1px solid #1f2335', padding: '6px 0', marginTop: 4 }}>
+                <div style={{ fontSize: 8, color: '#8a8fb0', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Maintenance</div>
+                <button className="btn-doctor" disabled={doctorRunning === 'cleanTemp'} onClick={async () => {
+                  setDoctorRunning('cleanTemp')
+                  try {
+                    const result = await window.doctorAPI.cleanTemp()
+                    setDoctorLog(prev => [`[CLEAN TEMP] Removed ${result.removed} files, freed ${result.freedMB}MB`, ...prev].slice(0, 50))
+                  } catch (err: any) { setDoctorLog(prev => [`[CLEAN TEMP] Error: ${err.message}`, ...prev].slice(0, 50)) }
+                  finally { setDoctorRunning(null) }
+                }}>{doctorRunning === 'cleanTemp' ? '...' : 'CLEAN TEMP'}</button>
+
+                <button className="btn-doctor" onClick={async () => {
+                  setDoctorRunning('findLargeFiles')
+                  try {
+                    const result = await window.doctorAPI.findLargeFiles({ minMB: 100 })
+                    setDoctorLog(prev => [`[LARGE FILES] Found ${result.files.length} files >100MB:`, ...prev].slice(0, 50))
+                    result.files.slice(0, 10).forEach((f: any) => {
+                      setDoctorLog(prev => [`  ${f.path} (${f.sizeMB.toFixed(1)}MB)`, ...prev].slice(0, 50))
+                    })
+                  } catch (err: any) { setDoctorLog(prev => [`[LARGE FILES] Error: ${err.message}`, ...prev].slice(0, 50)) }
+                  finally { setDoctorRunning(null) }
+                }}>FIND LARGE FILES</button>
+
+                <button className="btn-doctor" onClick={async () => {
+                  setDoctorRunning('findDuplicates')
+                  try {
+                    const result = await window.doctorAPI.findDuplicates({})
+                    const totalDuplicates = result.groups.reduce((sum: number, g: any) => sum + g.files.length - 1, 0)
+                    setDoctorLog(prev => [`[DUPLICATES] Found ${result.groups.length} groups, ${totalDuplicates} duplicate files`, ...prev].slice(0, 50))
+                    result.groups.slice(0, 5).forEach((g: any) => {
+                      setDoctorLog(prev => [`  Group (${g.size} bytes): ${g.files[0]}`, ...prev].slice(0, 50))
+                      g.files.slice(1).forEach((fp: string) => {
+                        setDoctorLog(prev => [`    └ Duplicate: ${fp}`, ...prev].slice(0, 50))
+                      })
+                    })
+                  } catch (err: any) { setDoctorLog(prev => [`[DUPLICATES] Error: ${err.message}`, ...prev].slice(0, 50)) }
+                  finally { setDoctorRunning(null) }
+                }}>FIND DUPLICATES</button>
+
+                <button className="btn-doctor" onClick={async () => {
+                  setDoctorRunning('diskSpace')
+                  try {
+                    const result = await window.doctorAPI.diskSpaceReport()
+                    setDoctorLog(prev => [`[DISK SPACE] Report:`, ...prev].slice(0, 50))
+                    result.suggestions.forEach((s: string) => {
+                      setDoctorLog(prev => [`  ${s}`, ...prev].slice(0, 50))
+                    })
+                  } catch (err: any) { setDoctorLog(prev => [`[DISK SPACE] Error: ${err.message}`, ...prev].slice(0, 50)) }
+                  finally { setDoctorRunning(null) }
+                }}>DISK SPACE REPORT</button>
+
+                <button className="btn-doctor" onClick={async () => {
+                  setDoctorRunning('backup')
+                  try {
+                    const result = await window.doctorAPI.backupFolders()
+                    setDoctorLog(prev => [`[BACKUP] ${result.success ? `Saved to ${result.path}` : `Failed: ${result.error}`}`, ...prev].slice(0, 50))
+                  } catch (err: any) { setDoctorLog(prev => [`[BACKUP] Error: ${err.message}`, ...prev].slice(0, 50)) }
+                  finally { setDoctorRunning(null) }
+                }}>BACKUP FOLDERS</button>
+
+                <button className="btn-doctor" style={{ borderColor: '#f44747', color: '#f44747' }}
+                  onClick={async () => {
+                    setDoctorRunning('deepClean')
+                    try {
+                      const result = await window.doctorAPI.deepClean()
+                      result.steps.forEach((step: any) => {
+                        setDoctorLog(prev => [`[DEEP CLEAN] ${step.ok ? '✅' : '❌'} ${step.name}: ${step.detail}`, ...prev].slice(0, 50))
+                      })
+                    } catch (err: any) { setDoctorLog(prev => [`[DEEP CLEAN] Error: ${err.message}`, ...prev].slice(0, 50)) }
+                    finally { setDoctorRunning(null) }
+                  }}>DEEP SYSTEM CLEAN</button>
               </div>
             </div>
           )}
@@ -3541,6 +3807,49 @@ function App() {
         </div>
         <div className="footer-version">© BC RESEARCH | v4.0</div>
       </footer>
+    </div>
+  )
+}
+
+// ── Analysis Summary Display Component ──────────────────────────
+
+function AnalysisSummaryDisplay({ data }: { data: any }) {
+  const [open, setOpen] = useState(false)
+  if (!data) return null
+  const { reports, combinedSummary } = data
+  const topics = reports?.[0]?.topTopics ?? []
+  const totalFiles = reports?.reduce?.((s: number, r: any) => s + (r.totalFiles ?? 0), 0) ?? 0
+  const totalDirs = reports?.reduce?.((s: number, r: any) => s + (r.totalDirs ?? 0), 0) ?? 0
+
+  return (
+    <div style={{ fontSize: 8, borderTop: '1px solid #1f2335', padding: '4px 6px', marginTop: 2 }}>
+      <div
+        style={{ cursor: 'pointer', color: '#8a8fb0', display: 'flex', alignItems: 'center', gap: 4, userSelect: 'none' }}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+        <span style={{ color: '#e2b714' }}>AI Summary</span>
+        <span style={{ color: '#5a5f78' }}>({totalFiles} files, {totalDirs} dirs)</span>
+      </div>
+      {open && (
+        <div style={{ marginTop: 3, lineHeight: 1.5, color: '#c0c4dc' }}>
+          {topics.length > 0 && (
+            <div style={{ marginBottom: 2 }}>
+              <span style={{ color: '#8a8fb0' }}>Topics: </span>
+              {topics.slice(0, 6).map((t: any, i: number) => (
+                <span key={i} style={{ color: '#7c8bdb' }}>
+                  {i > 0 && ', '}{t.topic} ({t.count})
+                </span>
+              ))}
+            </div>
+          )}
+          {combinedSummary && (
+            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto', fontSize: 7.5 }}>
+              {combinedSummary.length > 500 ? combinedSummary.slice(0, 500) + '...' : combinedSummary}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

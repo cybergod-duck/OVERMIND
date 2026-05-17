@@ -31,6 +31,11 @@ contextBridge.exposeInMainWorld('folderAPI', {
   getWatched:       ()                => ipcRenderer.invoke('folder:getWatched'),
   removeWatched:    (folderPath)      => ipcRenderer.invoke('folder:removeWatched', folderPath),
   listJson:         (folderPath)      => ipcRenderer.invoke('folder:list-json', folderPath),
+  moveFile:         (sourcePath, targetPath) => ipcRenderer.invoke('folder:moveFile', { sourcePath, targetPath }),
+  renameFile:       (filePath, newName)      => ipcRenderer.invoke('folder:renameFile', { filePath, newName }),
+  deleteFile:       (filePath)               => ipcRenderer.invoke('folder:deleteFile', { filePath }),
+  createFolder:     (folderPath)             => ipcRenderer.invoke('folder:createFolder', { folderPath }),
+  organizeSmart:    (folderPath)             => ipcRenderer.invoke('folder:organizeSmart', { folderPath }),
 });
 
 // ── Browser Bridge IPC ───────────────────────────────────────
@@ -76,4 +81,15 @@ contextBridge.exposeInMainWorld('privacyRemediationAPI', {
   openHostsFile:     ()                => ipcRenderer.invoke('privacy:open-hosts-file'),
   openDnsSettings:   ()                => ipcRenderer.invoke('privacy:open-dns-settings'),
   backupHostsFile:   ()                => ipcRenderer.invoke('privacy:backup-hosts-file'),
+});
+
+// ── System Doctor IPC (maintenance tools) ─────────────────────
+
+contextBridge.exposeInMainWorld('doctorAPI', {
+  cleanTemp:       ()                      => ipcRenderer.invoke('doctor:cleanTemp'),
+  findLargeFiles:  (folderPath, minMB)    => ipcRenderer.invoke('doctor:findLargeFiles', { folderPath, minMB }),
+  findDuplicates:  (folderPath)           => ipcRenderer.invoke('doctor:findDuplicates', { folderPath }),
+  diskSpaceReport: ()                      => ipcRenderer.invoke('doctor:diskSpaceReport'),
+  backupFolders:   ()                      => ipcRenderer.invoke('doctor:backupFolders'),
+  deepClean:       ()                      => ipcRenderer.invoke('doctor:deepClean'),
 });

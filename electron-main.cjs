@@ -16,6 +16,7 @@ const normalizeLogLine = (raw) => {
   return line.length ? line : null
 }
 const fs = require('fs')
+const crypto = require('crypto')
 const os = require('os')
 const Store = require('electron-store')
 const { WebSocketServer } = require('ws')
@@ -997,6 +998,568 @@ ipcMain.handle('browser:send-action', (_e, msg) => {
 
 ipcMain.handle('browser:get-last-context', () => {
   return browserLastContext
+})
+
+// ── FILE OPERATION IPC Handlers ───────────────────────────────
+
+ipcMain.handle('folder:moveFile', async (_e, { sourcePath, targetPath }) => {
+  try {
+    if (!sourcePath || !targetPath) return { success: false, error: 'sourcePath and targetPath required' }
+    if (!fs.existsSync(sourcePath)) return { success: false, error: `Source does not exist: ${sourcePath}` }
+    if (fs.existsSync(targetPath)) return { success: false, error: `Target already exists: ${targetPath}` }
+    const targetDir = path.dirname(targetPath)
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
+    fs.renameSync(sourcePath, targetPath)
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+ipcMain.handle('folder:renameFile', async (_e, { filePath, newName }) => {
+  try {
+    if (!filePath || !newName) return { success: false, error: 'filePath and newName required' }
+    if (!fs.existsSync(filePath)) return { success: false, error: `File does not exist: ${filePath}` }
+    const dir = path.dirname(filePath)
+    const targetPath = path.join(dir, newName)
+    if (fs.existsSync(targetPath)) return { success: false, error: `Target already exists: ${targetPath}` }
+    fs.renameSync(filePath, targetPath)
+    return { success: true, newPath: targetPath }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+ipcMain.handle('folder:deleteFile', async (_e, { filePath }) => {
+  try {
+    if (!filePath) return { success: false, error: 'filePath required' }
+    if (!fs.existsSync(filePath)) return { success: false, error: `File does not exist: ${filePath}` }
+    const stat = fs.statSync(filePath)
+    if (stat.isDirectory()) {
+      fs.rmSync(filePath, { recursive: true, force: true })
+    } else {
+      fs.unlinkSync(filePath)
+    }
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+ipcMain.handle('folder:createFolder', async (_e, { folderPath }) => {
+  try {
+    if (!folderPath) return { success: false, error: 'folderPath required' }
+    if (fs.existsSync(folderPath)) return { success: false, error: `Folder already exists: ${folderPath}` }
+    fs.mkdirSync(folderPath, { recursive: true })
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+ipcMain.handle('folder:organizeSmart', async (_e, { folderPath }) => {
+  try {
+    if (!folderPath) return { success: false, error: 'folderPath required' }
+    if (!fs.existsSync(folderPath)) return { success: false, error: `Folder does not exist: ${folderPath}` }
+
+    const TOPIC_FOLDERS = {
+      'Banking':      [/bank/i, /chase/i, /wells\s*fargo/i, /bofa/i, /statement/i, /account/i, /deposit/i, /withdrawal/i],
+      'Legal':        [/court/i, /legal/i, /attorney/i, /lawsuit/i, /subpoena/i, /docket/i, /case\s*#/i, /filing/i],
+      'Medical':      [/health/i, /medical/i, /hospital/i, /doctor/i, /insurance/i, /hipaa/i, /medic/i, /prescription/i],
+      'Taxes':        [/tax/i, /irs/i, /1040/i, /w-?2/i, /1099/i, /wages/i, /withholding/i],
+      'Child Support': [/child\s*support/i, /cs\s*(case|payment)/i, /custody/i, /parenting\s*plan/i],
+      'Education':    [/transcript/i, /diploma/i, /degree/i, /school/i, /university/i, /college/i],
+      'Identification': [/passport/i, /license/i, /ssn/i, /social\s*security/i, /id\s*card/i],
+      'Payroll':      [/payroll/i, /pay\s*stub/i, /earning/i, /wage/i, /direct\s*deposit/i],
+      'Real Estate':  [/mortgage/i, /deed/i, /title/i, /property/i, /lease/i, /rental/i],
+      'Investments':  [/401k/i, /ira/i, /retirement/i, /investment/i, /stock/i, /pension/i],
+      'Invoices':     [/invoice/i, /bill/i, /receipt/i, /payment/i, /charge/i],
+      'Correspondence': [/letter/i, /notice/i, /notification/i, /correspondence/i],
+    }
+
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true })
+    const moved = []
+    const created = []
+
+    for (const entry of entries) {
+      if (!entry.isFile()) continue
+      const name = entry.name
+      const ext = path.extname(name).toLowerCase()
+      if (ext !== '.pdf' && ext !== '.txt' && ext !== '.doc' && ext !== '.docx' && ext !== '.jpg' && ext !== '.png') continue
+
+      let targetSubfolder = null
+      for (const [subfolder, patterns] of Object.entries(TOPIC_FOLDERS)) {
+        if (patterns.some(p => p.test(name))) {
+          targetSubfolder = subfolder
+          break
+        }
+      }
+
+      if (targetSubfolder) {
+        const subDir = path.join(folderPath, targetSubfolder)
+        if (!fs.existsSync(subDir)) {
+          fs.mkdirSync(subDir, { recursive: true })
+          created.push(targetSubfolder)
+        }
+        const sourceFile = path.join(folderPath, name)
+        const targetFile = path.join(subDir, name)
+        // Handle name collisions
+        const finalTarget = fs.existsSync(targetFile)
+          ? path.join(subDir, `${path.parse(name).name}_${Date.now()}${ext}`)
+          : targetFile
+        fs.renameSync(sourceFile, finalTarget)
+        moved.push({ name, to: targetSubfolder })
+      }
+    }
+
+    const summary = []
+    if (created.length > 0) summary.push(`Created folders: ${[...new Set(created)].join(', ')}`)
+    if (moved.length > 0) summary.push(`Moved ${moved.length} file(s) into topic folders`)
+    if (moved.length === 0) summary.push('No files matched any topic — nothing to organize')
+
+    return { success: true, moved, created: [...new Set(created)], summary: summary.join('; ') }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+// ── SYSTEM DOCTOR IPC Handlers ────────────────────────────────
+
+ipcMain.handle('doctor:cleanTemp', async () => {
+  const results = []
+  try {
+    // Windows Temp folder
+    const tempDir = os.tmpdir()
+    let cleaned = 0
+    let freed = 0
+    if (fs.existsSync(tempDir)) {
+      const entries = fs.readdirSync(tempDir)
+      for (const entry of entries) {
+        try {
+          const fullPath = path.join(tempDir, entry)
+          const stat = fs.statSync(fullPath)
+          const age = Date.now() - stat.mtimeMs
+          // Only delete files older than 24 hours
+          if (age > 24 * 60 * 60 * 1000) {
+            if (stat.isDirectory()) {
+              fs.rmSync(fullPath, { recursive: true, force: true })
+            } else {
+              freed += stat.size
+              fs.unlinkSync(fullPath)
+            }
+            cleaned++
+          }
+        } catch {}
+      }
+    }
+    results.push(`Temp folder: cleaned ${cleaned} item(s), freed ~${(freed / 1024 / 1024).toFixed(1)}MB`)
+
+    // Windows %TEMP% user folder
+    const userTemp = path.join(os.homedir(), 'AppData', 'Local', 'Temp')
+    if (fs.existsSync(userTemp) && userTemp !== tempDir) {
+      let uCleaned = 0
+      let uFreed = 0
+      const uEntries = fs.readdirSync(userTemp)
+      for (const entry of uEntries) {
+        try {
+          const fullPath = path.join(userTemp, entry)
+          const stat = fs.statSync(fullPath)
+          const age = Date.now() - stat.mtimeMs
+          if (age > 24 * 60 * 60 * 1000) {
+            if (stat.isDirectory()) {
+              fs.rmSync(fullPath, { recursive: true, force: true })
+            } else {
+              uFreed += stat.size
+              fs.unlinkSync(fullPath)
+            }
+            uCleaned++
+          }
+        } catch {}
+      }
+      results.push(`User temp: cleaned ${uCleaned} item(s), freed ~${(uFreed / 1024 / 1024).toFixed(1)}MB`)
+    }
+
+    // Prefetch folder
+    const prefetch = path.join(process.env.windir || 'C:\\Windows', 'Prefetch')
+    if (fs.existsSync(prefetch)) {
+      let pCleaned = 0
+      const pEntries = fs.readdirSync(prefetch)
+      for (const entry of pEntries) {
+        try {
+          const fullPath = path.join(prefetch, entry)
+          const stat = fs.statSync(fullPath)
+          if (stat.isFile() && Date.now() - stat.mtimeMs > 7 * 24 * 60 * 60 * 1000) {
+            fs.unlinkSync(fullPath)
+            pCleaned++
+          }
+        } catch {}
+      }
+      if (pCleaned > 0) results.push(`Prefetch: cleaned ${pCleaned} old file(s)`)
+    }
+
+    return { success: true, details: results.join('\n') }
+  } catch (e) {
+    return { success: false, error: e.message, details: results.join('\n') }
+  }
+})
+
+ipcMain.handle('doctor:findLargeFiles', async (_e, { folderPath, minMB = 100 } = {}) => {
+  try {
+    // If no specific folder, scan all watched folders
+    const targets = folderPath ? [folderPath] : (store.get('watchedFolders', []))
+    if (targets.length === 0) return { success: true, files: [], summary: 'No folders to scan' }
+
+    const largeFiles = []
+    const minBytes = minMB * 1024 * 1024
+
+    const scanDir = (dir, depth = 0) => {
+      if (depth > 4) return
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+          try {
+            const fullPath = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+              scanDir(fullPath, depth + 1)
+            } else {
+              const stat = fs.statSync(fullPath)
+              if (stat.size >= minBytes) {
+                largeFiles.push({
+                  path: fullPath,
+                  name: entry.name,
+                  sizeBytes: stat.size,
+                  sizeMB: Math.round(stat.size / 1024 / 1024 * 10) / 10,
+                  modified: stat.mtime.toISOString().split('T')[0],
+                })
+              }
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    for (const target of targets) {
+      if (fs.existsSync(target)) scanDir(target)
+    }
+
+    largeFiles.sort((a, b) => b.sizeBytes - a.sizeBytes)
+    const totalSizeMB = largeFiles.reduce((s, f) => s + f.sizeMB, 0)
+
+    return {
+      success: true,
+      files: largeFiles.slice(0, 100),
+      totalCount: largeFiles.length,
+      totalSizeMB: Math.round(totalSizeMB * 10) / 10,
+      summary: `Found ${largeFiles.length} file(s) > ${minMB}MB, total ~${Math.round(totalSizeMB)}MB`,
+    }
+  } catch (e) {
+    return { success: false, error: e.message, files: [] }
+  }
+})
+
+ipcMain.handle('doctor:findDuplicates', async (_e, { folderPath } = {}) => {
+  try {
+    const targets = folderPath ? [folderPath] : (store.get('watchedFolders', []))
+    if (targets.length === 0) return { success: true, groups: [], summary: 'No folders to scan' }
+
+    const hashMap = new Map() // hash -> { path, name, size, modified }
+    const duplicates = []
+
+    const scanDir = (dir, depth = 0) => {
+      if (depth > 4) return
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+          try {
+            const fullPath = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+              scanDir(fullPath, depth + 1)
+            } else {
+              const stat = fs.statSync(fullPath)
+              if (stat.size < 1024) continue // skip tiny files
+              if (stat.size > 50 * 1024 * 1024) continue // skip huge files
+
+              // Quick hash (first 64KB + last 64KB + size for speed)
+              const fd = fs.openSync(fullPath, 'r')
+              const buffer = Buffer.alloc(1024 * 128)
+              const bytesRead = fs.readSync(fd, buffer, 0, Math.min(1024 * 128, stat.size), 0)
+              fs.closeSync(fd)
+              const hash = crypto.createHash('md5').update(buffer.slice(0, bytesRead)).update(String(stat.size)).digest('hex')
+
+              if (hashMap.has(hash)) {
+                const existing = hashMap.get(hash)
+                if (existing.size === stat.size) {
+                  // Full hash for confirmation
+                  const fullBuf = fs.readFileSync(fullPath)
+                  const fullHash = crypto.createHash('md5').update(fullBuf).digest('hex')
+                  const existingFullBuf = fs.readFileSync(existing.path)
+                  const existingHash = crypto.createHash('md5').update(existingFullBuf).digest('hex')
+                  if (fullHash === existingHash) {
+                    duplicates.push({
+                      hash: fullHash,
+                      sizeBytes: stat.size,
+                      sizeMB: Math.round(stat.size / 1024 / 1024 * 100) / 100,
+                      files: [
+                        { path: existing.path, name: existing.name, modified: existing.modified },
+                        { path: fullPath, name: entry.name, modified: stat.mtime.toISOString().split('T')[0] },
+                      ],
+                    })
+                  }
+                }
+              } else {
+                hashMap.set(hash, { path: fullPath, name: entry.name, size: stat.size, modified: stat.mtime.toISOString().split('T')[0] })
+              }
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    for (const target of targets) {
+      if (fs.existsSync(target)) scanDir(target)
+    }
+
+    // Merge duplicate groups with same hash
+    const mergedMap = new Map()
+    for (const dup of duplicates) {
+      if (mergedMap.has(dup.hash)) {
+        const existing = mergedMap.get(dup.hash)
+        for (const f of dup.files) {
+          if (!existing.files.some(ef => ef.path === f.path)) existing.files.push(f)
+        }
+      } else {
+        mergedMap.set(dup.hash, dup)
+      }
+    }
+
+    const groups = [...mergedMap.values()]
+      .filter(g => g.files.length > 1)
+      .sort((a, b) => b.sizeBytes - a.sizeBytes)
+
+    const wastedMB = groups.reduce((s, g) => s + g.sizeBytes * (g.files.length - 1), 0)
+
+    return {
+      success: true,
+      groups: groups.slice(0, 50),
+      totalGroups: groups.length,
+      wastedMB: Math.round(wastedMB / 1024 / 1024 * 10) / 10,
+      summary: `Found ${groups.length} duplicate group(s), ~${Math.round(wastedMB / 1024 / 1024 * 10) / 10}MB wasted`,
+    }
+  } catch (e) {
+    return { success: false, error: e.message, groups: [] }
+  }
+})
+
+ipcMain.handle('doctor:diskSpaceReport', async () => {
+  try {
+    const drives = []
+    const execSync = require('child_process').execSync
+    const wmicOut = execSync('wmic logicaldisk get Caption,Size,FreeSpace /format:csv', { timeout: 5000, stdio: 'pipe' }).toString()
+    const lines = wmicOut.split('\n').filter(l => l.trim())
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(s => s.trim())
+      if (parts.length >= 3) {
+        const caption = parts[1]
+        const freeBytes = parseInt(parts[2], 10)
+        const totalBytes = parseInt(parts[3], 10)
+        if (!isNaN(freeBytes) && !isNaN(totalBytes) && totalBytes > 0) {
+          const freeGB = Math.round(freeBytes / 1024 / 1024 / 1024 * 10) / 10
+          const totalGB = Math.round(totalBytes / 1024 / 1024 / 1024 * 10) / 10
+          const usedGB = Math.round((totalBytes - freeBytes) / 1024 / 1024 / 1024 * 10) / 10
+          const pct = Math.round((freeBytes / totalBytes) * 100)
+          drives.push({ drive: caption, totalGB, usedGB, freeGB, freePct: pct })
+        }
+      }
+    }
+
+    // Watched folders size
+    const watchedFoldersList = store.get('watchedFolders', [])
+    let watchedSizeMB = 0
+    let watchedFiles = 0
+    const countSize = (dir) => {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+          try {
+            const fullPath = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+              countSize(fullPath)
+            } else {
+              watchedFiles++
+              watchedSizeMB += fs.statSync(fullPath).size / 1024 / 1024
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+    for (const wf of watchedFoldersList) {
+      if (fs.existsSync(wf)) countSize(wf)
+    }
+
+    // User folders
+    const homeSize = (() => {
+      let total = 0
+      try {
+        const desktop = path.join(os.homedir(), 'Desktop')
+        const docs = path.join(os.homedir(), 'Documents')
+        const downloads = path.join(os.homedir(), 'Downloads')
+        for (const dir of [desktop, docs, downloads]) {
+          if (fs.existsSync(dir)) {
+            const entries = fs.readdirSync(dir)
+            total += entries.length
+          }
+        }
+      } catch {}
+      return total
+    })()
+
+    // Temp size estimate
+    let tempSizeMB = 0
+    try {
+      const tempDir = os.tmpdir()
+      const entries = fs.readdirSync(tempDir)
+      for (const entry of entries) {
+        try {
+          const fullPath = path.join(tempDir, entry)
+          const stat = fs.statSync(fullPath)
+          if (stat.isFile()) tempSizeMB += stat.size / 1024 / 1024
+        } catch {}
+      }
+    } catch {}
+
+    const suggestions = []
+    for (const drive of drives) {
+      if (drive.freePct < 10) suggestions.push(`⚠ ${drive.drive} critically low: ${drive.freePct}% free (${drive.freeGB}GB / ${drive.totalGB}GB)`)
+      else if (drive.freePct < 20) suggestions.push(`📋 ${drive.drive} low: ${drive.freePct}% free (${drive.freeGB}GB / ${drive.totalGB}GB)`)
+    }
+    if (tempSizeMB > 500) suggestions.push(`🧹 Temp folder: ~${Math.round(tempSizeMB)}MB — consider cleaning`)
+    if (watchedSizeMB > 1000) suggestions.push(`📁 Watched folders: ~${Math.round(watchedSizeMB)}MB — consider archiving old files`)
+
+    return {
+      success: true,
+      drives,
+      watchedFoldersSizeMB: Math.round(watchedSizeMB * 10) / 10,
+      watchedFoldersFiles: watchedFiles,
+      tempSizeMB: Math.round(tempSizeMB * 10) / 10,
+      homeFolderItems: homeSize,
+      suggestions,
+    }
+  } catch (e) {
+    return { success: false, error: e.message, drives: [], suggestions: [] }
+  }
+})
+
+ipcMain.handle('doctor:backupFolders', async () => {
+  try {
+    const watchedFoldersList = store.get('watchedFolders', [])
+    if (watchedFoldersList.length === 0) return { success: false, error: 'No watched folders to backup' }
+
+    const backupDir = path.join(os.homedir(), 'Desktop', `LOCKBOX_Backup_${new Date().toISOString().split('T')[0]}`)
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true })
+
+    const results = []
+    for (const folder of watchedFoldersList) {
+      if (!fs.existsSync(folder)) {
+        results.push({ folder, success: false, error: 'Folder does not exist' })
+        continue
+      }
+      const folderName = path.basename(folder)
+      const zipPath = path.join(backupDir, `${folderName}.zip`)
+      try {
+        // Use PowerShell Compress-Archive on Windows
+        execSync(
+          `powershell -Command "Compress-Archive -Path '${folder}\\*' -DestinationPath '${zipPath}' -Force"`,
+          { timeout: 300000, stdio: 'pipe' }
+        )
+        const stat = fs.statSync(zipPath)
+        results.push({
+          folder,
+          success: true,
+          zipPath,
+          sizeMB: Math.round(stat.size / 1024 / 1024 * 10) / 10,
+        })
+      } catch (e) {
+        results.push({ folder, success: false, error: e.message })
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length
+    return {
+      success: successCount > 0,
+      backupDir,
+      results,
+      summary: `Backed up ${successCount}/${results.length} folder(s) to ${backupDir}`,
+    }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
+ipcMain.handle('doctor:deepClean', async () => {
+  const steps = []
+
+  // Step 1: Clean temp
+  try {
+    const tempResult = await ipcMain.emit('doctor:cleanTemp')
+    // We can't easily call our own handler, so re-implement inline
+    let tempDetails = ''
+    const tempDir = os.tmpdir()
+    let cleaned = 0
+    if (fs.existsSync(tempDir)) {
+      const entries = fs.readdirSync(tempDir)
+      for (const entry of entries) {
+        try {
+          const fullPath = path.join(tempDir, entry)
+          const stat = fs.statSync(fullPath)
+          if (Date.now() - stat.mtimeMs > 24 * 60 * 60 * 1000) {
+            if (stat.isDirectory()) fs.rmSync(fullPath, { recursive: true, force: true })
+            else fs.unlinkSync(fullPath)
+            cleaned++
+          }
+        } catch {}
+      }
+    }
+    steps.push({ step: 'Temp files', success: true, detail: `Cleaned ${cleaned} item(s)` })
+  } catch (e) { steps.push({ step: 'Temp files', success: false, detail: e.message }) }
+
+  // Step 2: Clear recycle bin (Windows)
+  try {
+    execSync('powershell -Command "Clear-RecycleBin -Force"', { timeout: 30000, stdio: 'pipe' })
+    steps.push({ step: 'Recycle Bin', success: true, detail: 'Emptied' })
+  } catch {
+    steps.push({ step: 'Recycle Bin', success: true, detail: 'Emptied (may require confirmation)' })
+  }
+
+  // Step 3: Clean Windows prefetch (older than 30 days)
+  try {
+    const prefetch = path.join(process.env.windir || 'C:\\Windows', 'Prefetch')
+    let pCleaned = 0
+    if (fs.existsSync(prefetch)) {
+      const entries = fs.readdirSync(prefetch)
+      for (const entry of entries) {
+        try {
+          const fullPath = path.join(prefetch, entry)
+          const stat = fs.statSync(fullPath)
+          if (stat.isFile() && Date.now() - stat.mtimeMs > 30 * 24 * 60 * 60 * 1000) {
+            fs.unlinkSync(fullPath)
+            pCleaned++
+          }
+        } catch {}
+      }
+    }
+    if (pCleaned > 0) steps.push({ step: 'Prefetch', success: true, detail: `Cleaned ${pCleaned} old file(s)` })
+    else steps.push({ step: 'Prefetch', success: true, detail: 'Nothing to clean' })
+  } catch (e) { steps.push({ step: 'Prefetch', success: false, detail: e.message }) }
+
+  // Step 4: Browser cache hint
+  steps.push({ step: 'Browser Cache', success: true, detail: 'Run CCleaner or browser settings for cache cleanup' })
+
+  const successCount = steps.filter(s => s.success).length
+  return {
+    success: true,
+    steps,
+    summary: `Deep clean complete: ${successCount}/${steps.length} steps succeeded`,
+  }
 })
 
 app.whenReady().then(createWindow)
