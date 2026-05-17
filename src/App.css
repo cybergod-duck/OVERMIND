@@ -2057,6 +2057,214 @@ input, select, textarea {
   color: #ff5c5c;
 }
 
+/* ── Welcome overlay (first-run onboarding) ───────────────────── */
+
+.welcome-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(4, 5, 10, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  animation: welcome-fade-in 0.4s ease-out;
+}
+
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.welcome-panel {
+  width: 520px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 36px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  box-shadow:
+    0 0 80px rgba(99, 102, 241, 0.06),
+    0 0 160px rgba(99, 102, 241, 0.03),
+    0 8px 40px rgba(0, 0, 0, 0.4);
+  animation: welcome-panel-in 0.35s ease-out;
+}
+
+@keyframes welcome-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.welcome-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.welcome-logo-icon {
+  font-size: 28px;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.welcome-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, var(--accent) 0%, #a78bfa 60%, #e2e4f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-subtitle {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  text-transform: uppercase;
+}
+
+/* ── Feature cards ─────────────────────────────────────────── */
+
+.welcome-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.welcome-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(30, 32, 48, 0.5);
+  transition: all 0.2s ease;
+}
+
+.welcome-feature:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(99, 102, 241, 0.15);
+  transform: translateX(3px);
+}
+
+.welcome-feature-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  width: 24px;
+  text-align: center;
+}
+
+.welcome-feature-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.welcome-feature-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.03em;
+}
+
+.welcome-feature-desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ── Tip ───────────────────────────────────────────────────── */
+
+.welcome-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  padding: 8px 14px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  border-radius: 6px;
+  width: 100%;
+}
+
+.welcome-tip-icon {
+  font-size: 12px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── Get Started button ────────────────────────────────────── */
+
+.welcome-btn {
+  background: linear-gradient(135deg, var(--accent) 0%, #818cf8 100%);
+  color: #ffffff;
+  border: none;
+  padding: 12px 36px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  user-select: none;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
+}
+
+.welcome-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
+}
+
+.welcome-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Setup model badge ────────────────────────────────────────── */
+
+.setup-btn-badge {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.15);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 2px;
+}
+
+.setup-btn-primary.recommended {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
+}
+
+.setup-btn-primary.recommended:hover {
+  background: rgba(99, 102, 241, 0.22);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+}
+
 .privacy-confirm-btn--danger:hover {
   background: rgba(255, 92, 92, 0.25);
   border-color: rgba(255, 92, 92, 0.5);

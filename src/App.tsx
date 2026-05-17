@@ -529,6 +529,7 @@ function App() {
   const [setupOllamaVersion, setSetupOllamaVersion] = useState<string | null>(null)
   const [setupDiskSpace, setSetupDiskSpace] = useState<{ freeGB: number; totalGB: number } | null>(null)
   const [setupApiKeyCount, setSetupApiKeyCount] = useState(0)
+  const [showWelcome, setShowWelcome] = useState(false)
   const [browserStatus, setBrowserStatus] = useState<{ connected: boolean; clients: number } | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
@@ -1481,6 +1482,8 @@ function App() {
     await new Promise(r => setTimeout(r, 1500))
 
     setShowSetup(false)
+    // Show welcome overlay after setup dismisses
+    setShowWelcome(true)
   }
 
   // ── Render ─────────────────────────────────────────────────
@@ -1582,16 +1585,16 @@ function App() {
 
             {setupPhase === 'model-prompt' && (
               <div className="setup-prompt">
-                <div className="setup-prompt-text">Choose your first local model to pull:</div>
+                <div className="setup-prompt-text">Pick a starter model to download (recommended: <strong>qwen3:4b</strong> — fast & lightweight):</div>
                 <div className="setup-prompt-buttons">
-                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('dolphin-llama3:latest')}>
-                    <span className="setup-btn-model-icon">▲</span> dolphin-llama3:latest
+                  <button className="setup-btn setup-btn-primary recommended" onClick={() => handleSelectModel('qwen3:4b')}>
+                    <span className="setup-btn-model-icon">★</span> qwen3:4b <span className="setup-btn-badge">RECOMMENDED</span>
                   </button>
-                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('llama3')}>
-                    <span className="setup-btn-model-icon">▲</span> llama3
+                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('qwen3:8b')}>
+                    <span className="setup-btn-model-icon">▲</span> qwen3:8b <span className="setup-btn-badge">MORE CAPABLE</span>
                   </button>
-                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('mistral')}>
-                    <span className="setup-btn-model-icon">▲</span> mistral
+                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('llama3.2:3b')}>
+                    <span className="setup-btn-model-icon">▲</span> llama3.2:3b
                   </button>
                   <button className="setup-btn setup-btn-secondary" onClick={handleSkipModel}>
                     SKIP FOR NOW
@@ -1626,6 +1629,72 @@ function App() {
 
   return (
     <div className="overmind">
+      {/* ── Welcome overlay (first-run onboarding) ────────────── */}
+      {showWelcome && (
+        <div className="welcome-overlay">
+          <div className="welcome-panel">
+            <div className="welcome-header">
+              <div className="welcome-logo-icon">◆</div>
+              <div className="welcome-title">Overmind</div>
+            </div>
+            <div className="welcome-subtitle">Personal AI For Your PC</div>
+
+            <div className="welcome-features">
+              <div className="welcome-feature">
+                <div className="welcome-feature-icon">💬</div>
+                <div className="welcome-feature-body">
+                  <div className="welcome-feature-title">AI Chat</div>
+                  <div className="welcome-feature-desc">Chat with local or cloud AI models. Ask questions, analyze data, get help with any task.</div>
+                </div>
+              </div>
+              <div className="welcome-feature">
+                <div className="welcome-feature-icon">🔐</div>
+                <div className="welcome-feature-body">
+                  <div className="welcome-feature-title">Vault</div>
+                  <div className="welcome-feature-desc">Securely store API keys, passwords, and secrets. Import from .env files or CSV.</div>
+                </div>
+              </div>
+              <div className="welcome-feature">
+                <div className="welcome-feature-icon">📁</div>
+                <div className="welcome-feature-body">
+                  <div className="welcome-feature-title">Watched Folders</div>
+                  <div className="welcome-feature-desc">Monitor folders for changes, analyze file structures, organize files with smart automation.</div>
+                </div>
+              </div>
+              <div className="welcome-feature">
+                <div className="welcome-feature-icon">🩺</div>
+                <div className="welcome-feature-body">
+                  <div className="welcome-feature-title">System Doctor</div>
+                  <div className="welcome-feature-desc">Diagnose network issues, clean temp files, find large files, and optimize system performance.</div>
+                </div>
+              </div>
+              <div className="welcome-feature">
+                <div className="welcome-feature-icon">🛡️</div>
+                <div className="welcome-feature-body">
+                  <div className="welcome-feature-title">Privacy Sentinel</div>
+                  <div className="welcome-feature-desc">Scan startup items, hosts file, running processes, and DNS config for privacy risks.</div>
+                </div>
+              </div>
+              <div className="welcome-feature">
+                <div className="welcome-feature-icon">🌐</div>
+                <div className="welcome-feature-body">
+                  <div className="welcome-feature-title">Browser Bridge</div>
+                  <div className="welcome-feature-desc">Connect the browser extension to bring web context into your AI conversations.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="welcome-tip">
+              <span className="welcome-tip-icon">✦</span>
+              <span>Type <strong>help</strong> anytime to see what I can do for you.</span>
+            </div>
+
+            <button className="welcome-btn" onClick={() => setShowWelcome(false)}>
+              GET STARTED
+            </button>
+          </div>
+        </div>
+      )}
       <header className="header">
         <div className="header-left">
           <div className="logo-icon">◆</div>
