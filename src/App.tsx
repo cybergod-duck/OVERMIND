@@ -611,21 +611,23 @@ const AGENT_TOOLS = {
     const TOPIC_MAP: [RegExp, string][] = [
       [/child\s*support|cs\s*(case|payment|order)/i, '👶 Child Support'],
       [/bank\s*(of\s*)?america|bofa|chase|wells\s*fargo|us\s*bank|pnc/i, '🏦 Banking'],
-      [/court|judge|docket|case\s*#?\s*|filing|legal|attorney|lawyer|lawsuit/i, '⚖️ Legal/Court'],
-      [/health|medical|medic|hospital|doctor|patient|insurance|hipaa/i, '🏥 Healthcare'],
+      [/court|judge|docket|case\s*#?\s*|filing|legal|attorney|lawyer|lawsuit|notice|notification|letter|correspondence|subpoena/i, '⚖️ Legal/Court'],
+      [/state\s+(of|south|north|new|california|texas|florida|illinois|ohio)|county\s+(court|of)|government|agency|department\s+of|bureau|commission|family\s+court/i, '⚖️ Legal/Court'],
+      [/health|medical|medic|hospital|doctor|patient|insurance|hipaa|financial.assistance|benefit|program|medicaid|medicare|molina/i, '🏥 Healthcare'],
       [/tax|irs|1040|w-?2|1099|tax\s*return|wages|withholding/i, '💰 Taxes'],
-      [/payroll|wage|earning|pay\s*stub|direct\s*deposit/i, '💵 Payroll/Income'],
+      [/payroll|wage|earning|pay\s*stub|direct\s*deposit|timesheet/i, '💵 Payroll/Income'],
       [/resume|cv|curriculum\s*vitae/i, '📋 Resume/CV'],
-      [/transcript|diploma|degree|academic|school|university|college|gpa|enrollment/i, '🎓 Education'],
-      [/bank\s*statement|account.*statement|monthly.*statement/i, '🏦 Bank Statements'],
-      [/mortgage|loan|deed|title|property|real\s*estate|escrow|homeowner/i, '🏠 Real Estate/Mortgage'],
-      [/invoice|bill|receipt|payment\s*(history|record)|charge/i, '🧾 Invoices/Bills'],
-      [/id\s*card|passport|license|identification|ssn|social\s*security/i, '🪪 Identification'],
-      [/divorce|custody|parenting\s*plan|visitation|alimony|spousal\s*support/i, '⚖️ Family Law'],
-      [/401k|retirement|ira|roth|pension|investment|stock|bond/i, '📈 Investments/Retirement'],
-      [/paystub|pay\s*stub|earnings\s*statement|wage\s*statement/i, '💵 Pay Stubs'],
+      [/transcript|diploma|degree|academic|school|university|college|gpa|enrollment|student/i, '🎓 Education'],
+      [/bank\s*statement|account.*statement|monthly.*statement|account\s*(summary|history|info)/i, '🏦 Bank Statements'],
+      [/mortgage|loan|deed|title|property|real\s*estate|escrow|homeowner|foreclosure/i, '🏠 Real Estate/Mortgage'],
+      [/invoice|bill|receipt|payment\s*(history|record)|charge|billing/i, '🧾 Invoices/Bills'],
+      [/id\s*card|passport|license|identif|ssn|social\s*security/i, '🪪 Identification'],
+      [/divorce|custody|parenting\s*plan|visitation|alimony|spousal\s*support|marital|separation/i, '⚖️ Family Law'],
+      [/401k|retirement|ira|roth|pension|investment|stock|bond|mutual\s*fund/i, '📈 Investments/Retirement'],
+      [/paystub|pay\s*stub|earnings\s*statement|wage\s*statement|payroll\s*record/i, '💵 Pay Stubs'],
       [/utility|electric|gas|water|power|phone\s*bill|internet|cell/i, '📞 Utilities'],
-      [/lease|rental|tenant|landlord|security\s*deposit/i, '🏠 Rental/Lease'],
+      [/lease|rental|tenant|landlord|security\s*deposit|eviction/i, '🏠 Rental/Lease'],
+      [/form|application|questionnaire|worksheet|checklist|template/i, '📋 Forms'],
     ]
 
     // ── Text cleaning function ──────────────────────────────────────
@@ -1937,9 +1939,9 @@ function App() {
         const isContent = usedToolName === 'watchedFoldersAnalyze'
         msgsForAI.push({
           role: 'user',
-          content: `[ATTACHED: REAL FOLDER DATA - obtained from ${usedToolName}() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nINSTRUCTIONS FOR USING THIS DATA:\n${isContent
-            ? `1. This is ACTUAL filesystem data with REAL file contents. Do NOT invent or guess.\n2. MAIN DIRECTIVE: SYNTHESIZE — do NOT dump raw previews. Group by topic or create a Person Profile if a name was asked about.\n3. For person queries, compile: name, relationships, financials, legal matters, healthcare, education, key dates, source documents.\n4. For topic queries, group documents by sub-theme with specific numbers/dates/entities.\n5. List directories with 📁, files with 📄. Use short content excerpts only when they add value.\n6. If a file's content is garbled (OCR errors), say: "text quality is poor — likely scanned."\n7. If the user asks about something not found, say: "I don't see that in the scanned folders."\n8. Never output {"tool":"..."} as your final answer. The tool already ran. Answer in plain English.\n9. Never hallucinate filenames or content. Only use what's actually in the data above.`
-            : `1. This is the ACTUAL filesystem data. Do NOT invent or guess any file or folder names.\n2. When describing the structure, list DIRECTORIES FIRST with a "(dir)" suffix (e.g. "Taxes 2025/ (dir)").\n3. Only mention individual files if the user explicitly asks about files.\n4. If the user asks about "subfolders" or "folders", ONLY list directories — ignore files entirely.\n5. If a name the user mentioned is NOT in this data, say: "I don't see 'X' in the actual folder listing."\n6. Never invent filenames or paths.\n7. Never output {"tool":"..."} as your final answer. The data is already here — answer in plain English.`
+          content: `⚠️ YOU MUST FOLLOW THESE DIRECTIONS. DO NOT QUOTE THEM. USE THE DATA BELOW TO ANSWER.\n\n${isContent
+            ? `DIRECTIVES (content analysis):\n- THIS IS REAL FILESYSTEM DATA — never invent or guess.\n- SYNTHESIZE a narrative answer. DO NOT dump raw previews.\n- If user asked about a PERSON: CREATE a Person Profile with name, relationships, financials, legal matters, healthcare, education, key dates, source documents.\n- If user asked about a TOPIC: group documents by sub-theme with specific numbers/dates/entities.\n- Use 📁 for directories, 📄 for files. Only include preview excerpts when they add unique value.\n- If preview text is garbled (OCR errors), say: "text quality is poor — likely scanned."\n- If something isn't in the data, say: "I don't see that in the scanned folders."\n- NEVER output {"tool":"..."} — the tool already ran. Answer in plain English.\n- NEVER hallucinate filenames or content.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
+            : `DIRECTIVES (structure analysis):\n- THIS IS THE ACTUAL FILESYSTEM — never invent names.\n- List DIRECTORIES FIRST with "(dir)" suffix.\n- Only mention files if user explicitly asks about them.\n- If user asks about folders/subfolders: ONLY list directories, ignore files.\n- If a name isn't in the data: "I don't see 'X' in the actual folder listing."\n- NEVER output {"tool":"..."} — data is already here. Answer in plain English.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
           }`,
         })
       }
