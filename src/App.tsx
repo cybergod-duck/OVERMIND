@@ -1260,8 +1260,83 @@ function parseToolTokens(text: string): ToolToken[] {
   return tokens
 }
 
+const DOCTOR_COMMAND_MAP: Record<string, string> = {
+  clean_temp_files: 'doctorCleanTemp',
+  clean_temp: 'doctorCleanTemp',
+  find_large_files: 'doctorFindLargeFiles',
+  large_files: 'doctorFindLargeFiles',
+  find_duplicates: 'doctorFindDuplicates',
+  duplicates: 'doctorFindDuplicates',
+  disk_space_report: 'doctorDiskSpaceReport',
+  disk_space: 'doctorDiskSpaceReport',
+  backup_folders: 'doctorBackupFolders',
+  backup: 'doctorBackupFolders',
+  deep_clean: 'doctorDeepClean',
+  deep_system_clean: 'doctorDeepClean',
+}
+
+const FILE_COMMAND_MAP: Record<string, string> = {
+  move: 'watchedFoldersMoveFile',
+  move_file: 'watchedFoldersMoveFile',
+  rename: 'watchedFoldersRenameFile',
+  rename_file: 'watchedFoldersRenameFile',
+  delete: 'watchedFoldersDeleteFile',
+  delete_file: 'watchedFoldersDeleteFile',
+  create: 'watchedFoldersCreateFolder',
+  create_folder: 'watchedFoldersCreateFolder',
+  organize: 'watchedFoldersOrganizeSmart',
+  organize_smart: 'watchedFoldersOrganizeSmart',
+}
+
 function parseToolCall(text: string): { tool: string; args: any } | null {
   try {
+    // ── Strategy 0: Handle { name, arguments } format (HIGHEST PRIORITY) ──
+    // The model outputs {"name":"doctor","arguments":{"command":"clean_temp_files"}}
+    // instead of the standard {"tool":"doctorCleanTemp","args":{}} format.
+    // Also handles {"name":"watchedFoldersMoveFile","arguments":{...}}
+    {
+      // Brace-depth scan for { name, arguments } format
+      let depth = 0
+      let start = -1
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i]
+        if (ch === '{') {
+          if (start === -1) start = i
+          depth++
+        } else if (ch === '}') {
+          depth--
+          if (depth === 0 && start !== -1) {
+            const candidate = text.slice(start, i + 1)
+            try {
+              const parsed = JSON.parse(candidate)
+              if (parsed.name && parsed.arguments) {
+                // Map doctor commands
+                if (parsed.name === 'doctor' && parsed.arguments.command) {
+                  const cmd = parsed.arguments.command.toLowerCase().replace(/-/g, '_')
+                  if (DOCTOR_COMMAND_MAP[cmd]) {
+                    return { tool: DOCTOR_COMMAND_MAP[cmd], args: {} }
+                  }
+                }
+                // Map file commands
+                if ((parsed.name === 'file' || parsed.name === 'folder') && parsed.arguments.command) {
+                  const cmd = parsed.arguments.command.toLowerCase().replace(/-/g, '_')
+                  if (FILE_COMMAND_MAP[cmd]) {
+                    const { command, ...rest } = parsed.arguments
+                    return { tool: FILE_COMMAND_MAP[cmd], args: rest }
+                  }
+                }
+                // Direct name-to-tool mapping (e.g., name: "watchedFoldersMoveFile")
+                if (parsed.name in AGENT_TOOLS) {
+                  return { tool: parsed.name, args: parsed.arguments ?? {} }
+                }
+              }
+            } catch { /* not valid JSON, continue */ }
+            start = -1
+          }
+        }
+      }
+    }
+
     // ── Strategy 1: Strip markdown code fences ──
     let cleaned = text.replace(/```[a-z]*\n?/gi, '').replace(/`/g, '').trim()
 
@@ -1328,7 +1403,10 @@ function parseToolCall(text: string): { tool: string; args: any } | null {
  */
 function stripToolCallJSON(text: string): string {
   // Remove patterns like {"tool":"xxx","args":{}} or {"tool":"xxx","args":{"key":"val"}}
-  return text.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[^}]*\}\s*\}/g, '').trim()
+  let result = text.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[^}]*\}\s*\}/g, '')
+  // Also strip {"name":"doctor","arguments":{"command":"xxx"}} patterns
+  result = result.replace(/\{"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}\s*\}/g, '')
+  return result.trim()
 }
 
 // ── Helpers ────────────────────────────────────────────────────
