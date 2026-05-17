@@ -1636,13 +1636,18 @@ function App() {
   return (
     <div className="overmind">
       <header className="header">
-        <div className="logo">Overmind</div>
-        <div className="status">
-          <span className="dot" />
-          SOVEREIGN_ADMIN_ACTIVE
+        <div className="header-left">
+          <div className="logo-icon">◆</div>
+          <div className="logo">Overmind</div>
         </div>
-        <div className={`browser-indicator${browserStatus?.connected ? ' browser-connected' : ''}`} title={browserStatus?.connected ? `Browser extension connected (${browserStatus.clients} client(s))` : 'No browser extension connected'}>
-          {browserStatus?.connected ? `BROWSER: CONNECTED (${browserStatus.clients})` : 'BROWSER: OFFLINE'}
+        <div className="header-center">
+          <div className="status-pill">
+            <span className="dot" />
+            <span className="status-text">ACTIVE</span>
+          </div>
+          <div className={`browser-indicator${browserStatus?.connected ? ' browser-connected' : ''}`} title={browserStatus?.connected ? `Browser extension connected (${browserStatus.clients} client(s))` : 'No browser extension connected'}>
+            {browserStatus?.connected ? `● ${browserStatus.clients} CLIENTS` : '○ OFFLINE'}
+          </div>
         </div>
         <div className="header-actions">
           <button
@@ -1836,7 +1841,7 @@ function App() {
 
       <div className="main">
         <aside className="sidebar">
-          <div className="section-label">THE_VAULT</div>
+          <div className="section-label"><span className="section-icon">◆</span> VAULT</div>
 
           {/* Category filter dropdown */}
           <select
@@ -2004,7 +2009,8 @@ function App() {
 
           {/* ── Vault Tools ─────────────────────────────────────── */}
           <div className="section-label vault-tools-toggle" onClick={() => setVaultToolsOpen(!vaultToolsOpen)} style={{ marginTop: 8, cursor: 'pointer' }}>
-            <span>{vaultToolsOpen ? '▼' : '▶'} TOOLS</span>
+            <span className="section-toggle">{vaultToolsOpen ? '▾' : '▸'}</span>
+            <span className="section-icon">⚡</span> TOOLS
             {vaultScanReport && (
               <span className="vault-tools-badge">
                 {vaultScanReport.duplicates.length + vaultScanReport.lowQuality.length}
@@ -2116,8 +2122,7 @@ function App() {
 
           {/* ── Watched Folders ──────────────────────────────── */}
           <div className="section-label" style={{ marginTop: 8 }}>
-            <FolderOpen size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            WATCHED_FOLDERS ({watchedFolders.length})
+            <span className="section-icon">◇</span> FOLDERS <span className="section-count">({watchedFolders.length})</span>
             <button
               className="folder-refresh-btn"
               onClick={handleRefreshFolderSummary}
@@ -2177,8 +2182,8 @@ function App() {
           {/* ── System Doctor ───────────────────────────────── */}
           <div className="section-label" style={{ cursor: 'pointer', marginTop: 8 }}
                onClick={() => setDoctorOpen(!doctorOpen)}>
-            <Activity size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            SYSTEM_DOCTOR {doctorOpen ? '▾' : '▸'}
+            <span className="section-toggle">{doctorOpen ? '▾' : '▸'}</span>
+            <span className="section-icon">◈</span> DOCTOR
           </div>
 
           {doctorOpen && (
@@ -2350,8 +2355,8 @@ function App() {
           {/* ── Privacy Sentinel ──────────────────────────────── */}
           <div className="section-label" style={{ cursor: 'pointer', marginTop: 8 }}
                onClick={() => setPrivacyOpen(!privacyOpen)}>
-            <Activity size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            PRIVACY_SENTINEL {privacyOpen ? '▾' : '▸'}
+            <span className="section-toggle">{privacyOpen ? '▾' : '▸'}</span>
+            <span className="section-icon">◉</span> PRIVACY
           </div>
 
           {privacyOpen && (
@@ -2612,25 +2617,63 @@ function App() {
         <div className="content">
           <div className="chat" ref={chatRef}>
             {messages.length === 0 ? (
-              <div className="idle">OVERMIND_ONLINE</div>
+              <div className="empty-state">
+                <div className="empty-logo">
+                  <div className="empty-logo-icon">◆</div>
+                  <div className="empty-logo-text">Overmind</div>
+                </div>
+                <div className="empty-tagline">Personal AI For Your PC</div>
+                <div className="empty-suggestions">
+                  <button className="suggestion-chip" onClick={() => setInput('Run system diagnostics')}>
+                    <span className="suggestion-icon">🔍</span> Run diagnostics
+                  </button>
+                  <button className="suggestion-chip" onClick={() => setInput('Check my privacy and security')}>
+                    <span className="suggestion-icon">🛡️</span> Check privacy
+                  </button>
+                  <button className="suggestion-chip" onClick={() => setInput('Analyze my watched folders')}>
+                    <span className="suggestion-icon">📁</span> Analyze folders
+                  </button>
+                  <button className="suggestion-chip" onClick={() => setInput('What can you do?')}>
+                    <span className="suggestion-icon">✦</span> What can you do?
+                  </button>
+                </div>
+              </div>
             ) : (
               messages.map((m, i) => (
                 <div key={i} className={`msg msg-${m.role}`}>
-                  <span className="msg-role">{m.role.toUpperCase()}</span>
-                  <span className="msg-content">{m.content}</span>
+                  {m.role === 'assistant' && <div className="msg-avatar">◆</div>}
+                  <div className="msg-body">
+                    {m.role !== 'user' && (
+                      <div className="msg-role-label">
+                        {m.role === 'assistant' ? 'Overmind' : m.role.toUpperCase()}
+                      </div>
+                    )}
+                    <div className="msg-content">{m.content}</div>
+                  </div>
                 </div>
               ))
             )}
             {loading && (
-              <div className="msg msg-system">
-                <span className="msg-role">SYSTEM</span>
-                <span className="msg-content">thinking...</span>
+              <div className="msg msg-assistant thinking-msg">
+                <div className="msg-avatar">◆</div>
+                <div className="msg-body">
+                  <div className="thinking-indicator">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-label">Thinking</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
           <div className="input-bar">
-            <input
+            <button className="btn-attach" title="Attach file">
+              <span className="attach-icon">+</span>
+            </button>
+            <textarea
+              className="input-field"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => {
@@ -2639,15 +2682,16 @@ function App() {
                   sendMessage()
                 }
               }}
-              placeholder=">_ type a message..."
+              placeholder="Message Overmind..."
               disabled={loading}
+              rows={1}
             />
             <button
               className="btn-send"
               onClick={sendMessage}
-              disabled={loading}
+              disabled={loading || !input.trim()}
             >
-              SEND
+              Send
             </button>
           </div>
         </div>
