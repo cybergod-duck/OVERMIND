@@ -612,8 +612,8 @@ const AGENT_TOOLS = {
       [/child\s*support|cs\s*(case|payment|order)/i, '👶 Child Support'],
       [/bank\s*(of\s*)?america|bofa|chase|wells\s*fargo|us\s*bank|pnc/i, '🏦 Banking'],
       [/court|judge|docket|case\s*#?\s*|filing|legal|attorney|lawyer|lawsuit|notice|notification|letter|correspondence|subpoena/i, '⚖️ Legal/Court'],
-      [/state\s+(of|south|north|new|california|texas|florida|illinois|ohio)|county\s+(court|of)|government|agency|department\s+of|bureau|commission|family\s+court/i, '⚖️ Legal/Court'],
-      [/health|medical|medic|hospital|doctor|patient|insurance|hipaa|financial.assistance|benefit|program|medicaid|medicare|molina/i, '🏥 Healthcare'],
+      [/state|county|government|agency|department|bureau|commission|family\s+court/i, '⚖️ Legal/Court'],
+      [/health|medical|medic|hospital|doctor|patient|insurance|hipaa|financial|assistance|benefit|program|medicaid|medicare/i, '🏥 Healthcare'],
       [/tax|irs|1040|w-?2|1099|tax\s*return|wages|withholding/i, '💰 Taxes'],
       [/payroll|wage|earning|pay\s*stub|direct\s*deposit|timesheet/i, '💵 Payroll/Income'],
       [/resume|cv|curriculum\s*vitae/i, '📋 Resume/CV'],
@@ -876,7 +876,7 @@ Available tools:
 - watchedFoldersList — args: {} — returns watched folders as JSON
 - watchedFoldersDescribe — args: {} — returns watched folders and their immediate contents as formatted text (top level only, not recursive)
 - watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for ANY question about subfolders, file structure, directory contents, or "what's inside".
-- watchedFoldersAnalyze — args: { folderPath?: string; maxDepth?: number; includeFileTypes?: string[] } — POWERFUL content-aware analyzer. Recursively walks folders, reads PDFs and text files to extract actual content, and returns a structured report with: folder tree (📁 icons), file previews, and a content summary. Use this for questions like "summarize everything about taxes", "what documents are in Laken's folder", "find bank statements". It reads real file contents, not just names.
+- watchedFoldersAnalyze — args: { folderPath?: string; maxDepth?: number; includeFileTypes?: string[] } — POWERFUL content-aware analyzer. Recursively walks folders, reads PDFs and text files to extract actual content, and returns a structured report with: folder tree (📁 icons), file previews, and a content summary. Use this for questions like "summarize everything about taxes", "what documents are in the Finance folder", "find bank statements". It reads real file contents, not just names.
 - browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
 
 ╔══════════════════════════════════════════════════════════════╗
@@ -884,7 +884,7 @@ Available tools:
 ╚══════════════════════════════════════════════════════════════╝
 
 You ENTER STRICT FILESYSTEM MODE when the user asks about:
-• "watched folders" or any specific folder label (e.g. "Laken's Files")
+• "watched folders" or any specific folder label (e.g. "Finance", "Medical")
 • "subfolders", "folders", "directory", "directory structure", "folder tree"
 • "what's inside", "what is in", "show me", "list", "contents"
 • "structure", "hierarchy", "organize", "group these files"
@@ -939,7 +939,7 @@ SUMMARY: Question about folders → {"tool":"watchedFoldersDeepScan","args":{}}
 ╚══════════════════════════════════════════════════════════════╝
 
 When the user asks about CONTENT, SUMMARIES, or INSIGHTS from watched folders
-(e.g. "summarize everything", "what documents are in Laken's folder",
+(e.g. "summarize everything", "what documents are in the Finance folder",
 "find bank statements", "what does this PDF say", "tell me about [person]"):
 
 Step 1 — Use the PRE-SCANNED data (already attached)
@@ -956,7 +956,7 @@ Step 2 — SYNTHESIZE, do NOT dump raw data
   ✅ GOOD: Organize by TOPIC or THEME. Create a coherent narrative.
   ✅ GOOD: For person queries, compile a "Person Profile" with key facts.
 
-Step 3 — For queries about a PERSON (e.g. "Laken Lybrand", "HER"):
+Step 3 — For queries about a PERSON (e.g. "John Smith", "a person mentioned in the files"):
   Create a structured Person Profile Summary with sections:
   • Full Name / Identifiers
   • Relationships (children, family members mentioned)
@@ -986,18 +986,18 @@ Step 6 — Never output raw tool-call JSON as your answer
 
 === GOOD RESPONSE EXAMPLES ===
 
-✅ GOOD — User: "What can you tell me about Laken Lybrand?"
+✅ GOOD — User: "What can you tell me about [person]?"
   (uses pre-scanned data)
-  "📋 Person Profile: Laken Lybrand
+  "📋 Person Profile: [Name from data]
   👶 Child Support: $450/month ordered in case CS-2024-1234.
-    Source: Laken/Child Support/Order_2024.pdf
+    Source: Child Support/Order_2024.pdf
   🏦 Banking: Bank of America account ending in 4832.
     Last statement (Jan 2025) showed $2,340 balance.
-    Source: Laken/Finance/BofA_Jan2025.pdf
+    Source: Finance/BofA_Jan2025.pdf
   🏥 Healthcare: Cigna PPO plan, $30 copay, dental included.
-    Source: Laken/Medical/Insurance_2025.pdf
+    Source: Medical/Insurance_2025.pdf
   ⚖️ Legal: Custody filing from March 2024 (Family Court #FC-2024-567).
-    Source: Laken/Legal/Custody_Filing.pdf
+    Source: Legal/Custody_Filing.pdf
   Note: No tax documents or employment records found in scanned folders."
 
 ✅ GOOD — User: "Summarize everything in my watched folders"
@@ -1005,7 +1005,7 @@ Step 6 — Never output raw tool-call JSON as your answer
   "📊 Watched Folders Overview
   Total: 2 folders, 24 files across 7 topics
 
-  📁 Laken/
+  📁 Personal/
     🏦 Banking (5 files): Bank of America statements from Jan-Mar 2025,
       Chase credit card summary
     👶 Child Support (3 files): $450/month order + payment history
@@ -1023,20 +1023,20 @@ Step 6 — Never output raw tool-call JSON as your answer
 ✅ GOOD — User: "Find all bank statements"
   (uses pre-scanned data)
   "🏦 Bank Statements found:
-  📁 Laken/Finance/
+  📁 Personal/Finance/
     📄 BofA_Jan2025.pdf — 'Bank of America, checking 4832, $2,340 balance'
     📄 BofA_Feb2025.pdf — 'Bank of America, checking 4832, $1,890 balance'
     📄 Chase_CC_Feb2025.pdf — 'Chase credit card, balance $450'
-  Total: 3 bank statements, all from Laken's folder."
+  Total: 3 bank statements, all from the Personal folder."
 
 ❌ BAD — User: "Summarize watched folders"
   (dumps raw previews)
-  "Folder Laken has 14 files. File1: Bank of America statement Jan... File2: Court order..."
+  "Personal folder has 14 files. File1: Bank of America statement Jan... File2: Court order..."
   ← Too much raw listing, no synthesis, no grouping.
 
-❌ BAD — User: "Tell me about Laken"
+❌ BAD — User: "Tell me about [person]"
   (vague)
-  "Laken has some financial documents and legal papers."
+  "They have some financial documents and legal papers."
   ← No specifics, no profile structure, no source references.
 
 ❌ BAD — User: "What's in the folders?"
