@@ -447,4 +447,36 @@ export const AGENT_TOOLS = {
   doctorDeepClean: async () => {
     return (window as any).doctorAPI?.deepClean?.()
   },
+
+  // ── New Intelligent Doctor Tools ────────────────────────────
+  doctorFlushDns: async () => {
+    return (window as any).doctorAPI?.flushDns?.()
+  },
+  doctorWinsockReset: async () => {
+    return (window as any).doctorAPI?.winsockReset?.()
+  },
+  doctorSfcScan: async () => {
+    return (window as any).doctorAPI?.sfcScan?.()
+  },
+  doctorDismRestoreHealth: async () => {
+    return (window as any).doctorAPI?.dismRestoreHealth?.()
+  },
+  doctorChkdsk: async () => {
+    return (window as any).doctorAPI?.chkdsk?.()
+  },
+  doctorNetworkFullDiagnostics: async () => {
+    return (window as any).doctorAPI?.networkFullDiagnostics?.()
+  },
+  doctorHighCpuProcesses: async () => {
+    return (window as any).doctorAPI?.highCpuProcesses?.()
+  },
+  doctorKillProcess: async (args: { pid?: number; name?: string } = {}) => {
+    return (window as any).doctorAPI?.killProcess?.(args.pid, args.name)
+  },
+  doctorStartupItems: async () => {
+    return (window as any).doctorAPI?.startupItems?.()
+  },
+  doctorSystemInfo: async () => {
+    return (window as any).doctorAPI?.systemInfo?.()
+  },
 } as const

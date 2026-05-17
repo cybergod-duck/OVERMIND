@@ -1,6 +1,7 @@
 import { AGENT_TOOLS } from './agentTools'
 import { TOOL_SYSTEM_SUFFIX } from './systemPrompt'
 import { parseToolCall, stripToolCallJSON, parseToolTokens } from './toolParser'
+import { runDoctorDiagnosticChain, detectDoctorCategory, type DoctorDiagnosis } from './doctorTools'
 
 // ── Shared types (kept local to avoid circular deps with App.tsx) ─────
 
@@ -149,8 +150,10 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
   setLoading(true)
   log(`MSG_SENT → ${selectedModel}`)
 
-  // ── FORCED FALLBACK FOR DOCTOR TOOLS ───────────────────────
+  // ── INTELLIGENT DOCTOR DIAGNOSTIC CHAIN ─────────────────────
   const userTextLower = userText.toLowerCase().trim()
+
+  // Quick direct match for simple doctor commands (keep existing fast path)
   if (userTextLower.includes('clean temporary files') || userTextLower.includes('clean temp') || userTextLower.includes('cleanup temp') || userTextLower.includes('clear temp')) {
     setMessages(prev => [...prev, { role: 'agent', content: '⚙ Executing doctorCleanTemp...' }])
     try {
@@ -164,6 +167,21 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
       setMessages(prev => [...prev, { role: 'error', content: `Tool error: ${err.message}` }])
       setLoading(false)
       return
+    }
+  }
+
+  // Check if this is a broader doctor/intelligent query that needs diagnostic chains
+  let doctorDiagnosis: DoctorDiagnosis | null = null
+  const doctorCategory = detectDoctorCategory(userTextLower)
+  if (doctorCategory !== 'general' || userTextLower.includes('diagnose') || userTextLower.includes('health') || userTextLower.includes('check')) {
+    log(`[DOCTOR] Detected ${doctorCategory} query, starting diagnostic chain...`)
+    setMessages(prev => [...prev, { role: 'agent', content: `🔍 Running ${doctorCategory} diagnostics...` }])
+    try {
+      doctorDiagnosis = await runDoctorDiagnosticChain(userText)
+      log(`[DOCTOR] Chain complete: ${doctorDiagnosis.findings.length} findings`)
+    } catch (chainErr: any) {
+      log(`[DOCTOR] Chain error: ${chainErr.message}`)
+      // Non-fatal — continue with normal AI flow, chain error is logged but doesn't block
     }
   }
 
@@ -230,7 +248,12 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
       : `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE.\n✅ DATA ALREADY SCANNED — watchedFoldersDeepScan() has been called and the full folder tree is attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersDeepScan again.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nNever invent names — only mention names that appear in the data.\n❌ Do NOT output {"tool":"watchedFoldersDeepScan","args":{}} — the data is already here.`
     : ''
 
-  const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
+  // Doctor diagnosis context — inject structured findings if a diagnostic chain ran
+  const doctorContext = doctorDiagnosis
+    ? `\n\n[DOCTOR DIAGNOSTIC RESULTS]\n${doctorDiagnosis.label}\n${doctorDiagnosis.summary}\n\nFindings:\n${doctorDiagnosis.findings.map(f => `[${f.severity.toUpperCase()}] ${f.icon} ${f.title}: ${f.detail}`).join('\n')}\n\nFull data available in the [DOCTOR DATA] message below.`
+    : ''
+
+  const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext + doctorContext
 
   try {
     let preScannedData: any = null
@@ -259,6 +282,14 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
           ? `⚠️ CONTENT ANALYSIS MODE — SYNTHESIS REQUIRED:\n- 🚫 NEVER dump raw preview text or list files one by one. That is USELESS.\n- ✅ You are a SMART ASSISTANT. Synthesize key findings organized by topic.\n- 🔍 If user asked about a PERSON: IMMEDIATELY create a structured Person Profile with:\n    👤 Full name, 👨‍👩‍👧 Relationships, 💰 Financials (bank names, balances, income),\n    ⚖️ Legal matters (case numbers, court names, filings), 🏥 Healthcare,\n    📅 Key dates, 📁 Source documents (exact filenames).\n    State facts directly: "Bank of America account ****4832 — $2,340"\n    NOT "the preview mentions..." — just state it with Source: at the end.\n- 📊 If user asked about a TOPIC: group by sub-theme with specific numbers/dates/entities.\n- 📁 Use 📁/📄 sparingly. Only include preview excerpts when they add unique value.\n- ⚠️ If preview text is garbled (flagged as unreadable): say "text quality is poor — likely scanned" ONCE only.\n- ❌ If something isn't in the data: say "not found in scanned folders" — NEVER guess.\n- 🚫 NEVER output {"tool":"..."} — the tool already ran. Answer in PLAIN ENGLISH.\n- 🚫 NEVER hallucinate filenames or content.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
           : `DIRECTIVES (structure analysis):\n- THIS IS THE ACTUAL FILESYSTEM — never invent names.\n- List DIRECTORIES FIRST with "(dir)" suffix.\n- Only mention files if user explicitly asks about them.\n- If user asks about folders/subfolders: ONLY list directories, ignore files.\n- If a name isn't in the data: "I don't see 'X' in the actual folder listing."\n- NEVER output {"tool":"..."} — data is already here. Answer in plain English.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
         }`,
+      })
+    }
+
+    // Inject doctor diagnostic findings as structured data for AI reasoning
+    if (doctorDiagnosis) {
+      msgsForAI.push({
+        role: 'user',
+        content: `[DOCTOR DATA]\nDiagnostic category: ${doctorDiagnosis.category}\nSummary: ${doctorDiagnosis.summary}\n\nFindings:\n${doctorDiagnosis.findings.map(f => `[${f.severity.toUpperCase()}] ${f.icon} ${f.title}: ${f.detail}`).join('\n')}\n\nRaw data:\n${JSON.stringify(doctorDiagnosis.rawData, null, 2)}\n\nUse these findings to answer the user's question about their system. If any issues need fixing (e.g., flush DNS, kill process, run SFC), you can make additional tool calls. Always ask for user confirmation before making changes.`,
       })
     }
 

@@ -86,10 +86,21 @@ contextBridge.exposeInMainWorld('privacyRemediationAPI', {
 // ── System Doctor IPC (maintenance tools) ─────────────────────
 
 contextBridge.exposeInMainWorld('doctorAPI', {
-  cleanTemp:       ()                      => ipcRenderer.invoke('doctor:cleanTemp'),
-  findLargeFiles:  (folderPath, minMB)    => ipcRenderer.invoke('doctor:findLargeFiles', { folderPath, minMB }),
-  findDuplicates:  (folderPath)           => ipcRenderer.invoke('doctor:findDuplicates', { folderPath }),
-  diskSpaceReport: ()                      => ipcRenderer.invoke('doctor:diskSpaceReport'),
-  backupFolders:   ()                      => ipcRenderer.invoke('doctor:backupFolders'),
-  deepClean:       ()                      => ipcRenderer.invoke('doctor:deepClean'),
+  cleanTemp:              ()                      => ipcRenderer.invoke('doctor:cleanTemp'),
+  findLargeFiles:         (folderPath, minMB)    => ipcRenderer.invoke('doctor:findLargeFiles', { folderPath, minMB }),
+  findDuplicates:         (folderPath)           => ipcRenderer.invoke('doctor:findDuplicates', { folderPath }),
+  diskSpaceReport:        ()                      => ipcRenderer.invoke('doctor:diskSpaceReport'),
+  backupFolders:          ()                      => ipcRenderer.invoke('doctor:backupFolders'),
+  deepClean:              ()                      => ipcRenderer.invoke('doctor:deepClean'),
+  // ── New intelligent doctor tools ─────────────────────────
+  flushDns:               ()                      => ipcRenderer.invoke('doctor:flushDns'),
+  winsockReset:           ()                      => ipcRenderer.invoke('doctor:winsockReset'),
+  sfcScan:                ()                      => ipcRenderer.invoke('doctor:sfcScan'),
+  dismRestoreHealth:      ()                      => ipcRenderer.invoke('doctor:dismRestoreHealth'),
+  chkdsk:                 ()                      => ipcRenderer.invoke('doctor:chkdsk'),
+  networkFullDiagnostics: ()                      => ipcRenderer.invoke('doctor:networkFullDiagnostics'),
+  highCpuProcesses:       ()                      => ipcRenderer.invoke('doctor:highCpuProcesses'),
+  killProcess:            (pid, name)            => ipcRenderer.invoke('doctor:killProcess', { pid, name }),
+  startupItems:           ()                      => ipcRenderer.invoke('doctor:startupItems'),
+  systemInfo:             ()                      => ipcRenderer.invoke('doctor:systemInfo'),
 });

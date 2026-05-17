@@ -1123,6 +1123,216 @@ ipcMain.handle('folder:organizeSmart', async (_e, { folderPath }) => {
   }
 })
 
+// ── INTELLIGENT SYSTEM DOCTOR — Extended IPC Handlers ─────────
+
+ipcMain.handle('doctor:flushDns', async () => {
+  try {
+    const output = execSync('ipconfig /flushdns', { timeout: 10000, stdio: 'pipe' }).toString()
+    return { success: true, details: 'DNS cache flushed successfully', output: output.trim() }
+  } catch (e) {
+    return { success: false, error: e.message, details: 'Failed to flush DNS (may need admin privileges)' }
+  }
+})
+
+ipcMain.handle('doctor:winsockReset', async () => {
+  const steps = []
+  try {
+    const reset1 = execSync('netsh winsock reset', { timeout: 15000, stdio: 'pipe' }).toString()
+    steps.push({ step: 'Winsock reset', success: true, detail: 'Winsock catalog reset (reboot required)' })
+  } catch (e) { steps.push({ step: 'Winsock reset', success: false, detail: e.message }) }
+  try {
+    const reset2 = execSync('netsh int ip reset', { timeout: 15000, stdio: 'pipe' }).toString()
+    steps.push({ step: 'TCP/IP reset', success: true, detail: 'TCP/IP stack reset (reboot required)' })
+  } catch (e) { steps.push({ step: 'TCP/IP reset', success: false, detail: e.message }) }
+  const ok = steps.filter(s => s.success).length
+  return { success: ok > 0, steps, summary: `Winsock reset: ${ok}/${steps.length} steps completed. Reboot required.` }
+})
+
+ipcMain.handle('doctor:sfcScan', async () => {
+  try {
+    const output = execSync('sfc /scannow', { timeout: 600000, stdio: 'pipe' }).toString()
+    const corrupted = output.includes('found corrupt files') || output.includes('repair')
+    const clean = output.includes('did not find any integrity violations')
+    return {
+      success: true,
+      clean,
+      corrupted,
+      details: clean ? 'SFC: No integrity violations found' : 'SFC: Corrupt files found and repaired',
+      output: output.trim().split('\n').slice(-5).join('\n'),
+    }
+  } catch (e) {
+    return { success: false, error: e.message, details: 'SFC scan failed (may need admin privileges)' }
+  }
+})
+
+ipcMain.handle('doctor:dismRestoreHealth', async () => {
+  try {
+    const output = execSync('DISM /Online /Cleanup-Image /RestoreHealth', { timeout: 600000, stdio: 'pipe' }).toString()
+    const restored = output.includes('restoration completed') || output.includes('restored')
+    const healthy = output.includes('no component store corruption')
+    return {
+      success: true,
+      healthy,
+      restored,
+      details: healthy ? 'DISM: Component store is healthy' : (restored ? 'DISM: Corruption repaired' : 'DISM completed'),
+      output: output.trim().split('\n').slice(-5).join('\n'),
+    }
+  } catch (e) {
+    return { success: false, error: e.message, details: 'DISM restore failed (may need admin privileges)' }
+  }
+})
+
+ipcMain.handle('doctor:chkdsk', async () => {
+  try {
+    const output = execSync('chkdsk C: /scan', { timeout: 120000, stdio: 'pipe' }).toString()
+    const errors = output.includes('found') && !output.includes('0 KB in bad sectors')
+    const clean = output.includes('has no problems') || output.includes('no further action')
+    return {
+      success: true,
+      clean,
+      hasErrors: errors,
+      details: clean ? 'CHKDSK: No file system errors found' : 'CHKDSK: Errors found — review output',
+      output: output.trim().split('\n').slice(-8).join('\n'),
+    }
+  } catch (e) {
+    return { success: false, error: e.message, details: 'CHKDSK scan failed (may need admin privileges)' }
+  }
+})
+
+ipcMain.handle('doctor:networkFullDiagnostics', async () => {
+  const results = {}
+  results.timestamp = new Date().toISOString()
+
+  // Ping cloudflare + google
+  try {
+    const cf = execSync('ping -n 3 1.1.1.1', { timeout: 10000, stdio: 'pipe' }).toString()
+    const cfMatch = cf.match(/Minimum = (\d+)ms.*?Maximum = (\d+)ms.*?Average = (\d+)ms/)
+    results.pingCloudflare = cfMatch ? { min: parseInt(cfMatch[1]), max: parseInt(cfMatch[2]), avg: parseInt(cfMatch[3]) } : { raw: cf.trim().split('\n').pop() }
+  } catch { results.pingCloudflare = { error: '1.1.1.1 unreachable' } }
+
+  try {
+    const gg = execSync('ping -n 3 google.com', { timeout: 10000, stdio: 'pipe' }).toString()
+    const ggMatch = gg.match(/Minimum = (\d+)ms.*?Maximum = (\d+)ms.*?Average = (\d+)ms/)
+    results.pingGoogle = ggMatch ? { min: parseInt(ggMatch[1]), max: parseInt(ggMatch[2]), avg: parseInt(ggMatch[3]) } : { raw: gg.trim().split('\n').pop() }
+  } catch { results.pingGoogle = { error: 'google.com unreachable (DNS?)' } }
+
+  // DNS resolution test
+  try {
+    const ns = execSync('nslookup google.com 8.8.8.8', { timeout: 5000, stdio: 'pipe' }).toString()
+    const addr = ns.match(/Address(?:es)?:[\s\S]+?(\d+\.\d+\.\d+\.\d+)/)
+    results.dnsLookup = addr ? { server: '8.8.8.8', resolved: addr[1] } : { server: '8.8.8.8', raw: ns.trim().split('\n').slice(-2).join(' ') }
+  } catch { results.dnsLookup = { error: 'DNS lookup failed' } }
+
+  // Traceroute (quick, 1 hop)
+  try {
+    const tr = execSync('tracert -h 5 1.1.1.1', { timeout: 15000, stdio: 'pipe' }).toString()
+    const hops = tr.split('\n').filter(l => l.match(/^\s+\d+\s+/)).length
+    results.traceroute = { hops, summary: `${hops} hop(s) to 1.1.1.1` }
+  } catch { results.traceroute = { error: 'Traceroute failed' } }
+
+  // Speed test via PowerShell (download test from a known file)
+  try {
+    const ps = execSync('powershell -Command "(New-Object Net.WebClient).DownloadString(\'https://speed.cloudflare.com/__down?bytes=10000000\') -replace \'.*\',\'\' 2>$null; $sw = [Diagnostics.Stopwatch]::StartNew(); $wc = New-Object Net.WebClient; $data = $wc.DownloadData(\'https://speed.cloudflare.com/__down?bytes=10000000\'); $sw.Stop(); $mbps = [Math]::Round(10 / $sw.Elapsed.TotalSeconds * 8, 1); Write-Output \'DL_SPEED: $mbps Mbps\'"', { timeout: 30000, stdio: 'pipe' }).toString()
+    const speedMatch = ps.match(/DL_SPEED:\s*([\d.]+)\s*Mbps/)
+    results.speedTest = speedMatch ? { downloadMbps: parseFloat(speedMatch[1]) } : { raw: ps.trim().split('\n').filter(l => l.includes('Mbps')).join(', ') }
+  } catch { results.speedTest = { error: 'Speed test failed' } }
+
+  // Network adapters
+  try {
+    const adapters = execSync('powershell -Command "Get-NetAdapter | Where-Object {$_.Status -eq \'Up\'} | Select-Object Name, LinkSpeed, Status | ConvertTo-Json"', { timeout: 10000, stdio: 'pipe' }).toString()
+    const parsed = JSON.parse(adapters)
+    results.adapters = Array.isArray(parsed) ? parsed.map(a => ({ name: a.Name, speed: a.LinkSpeed, status: a.Status })) : [{ name: parsed.Name, speed: parsed.LinkSpeed, status: parsed.Status }]
+  } catch { results.adapters = [] }
+
+  // Gateway ping
+  try {
+    const ipcfg = execSync('ipconfig', { timeout: 5000, stdio: 'pipe' }).toString()
+    const gwMatch = ipcfg.match(/Default Gateway[. .]+:\s*(\d+\.\d+\.\d+\.\d+)/)
+    if (gwMatch) {
+      const gwPing = execSync(`ping -n 2 ${gwMatch[1]}`, { timeout: 5000, stdio: 'pipe' }).toString()
+      results.gateway = { ip: gwMatch[1], reachable: gwPing.includes('time=') || gwPing.includes('time<') }
+    }
+  } catch {}
+
+  // Diagnosis
+  const issues = []
+  if (results.pingCloudflare.error) issues.push('❌ No internet connectivity (1.1.1.1 unreachable)')
+  else if (results.pingCloudflare.avg > 100) issues.push(`⚠️ High latency to cloudflare: ${results.pingCloudflare.avg}ms`)
+  if (results.pingGoogle.error) issues.push('❌ DNS resolution failing (google.com unreachable)')
+  if (results.dnsLookup.error) issues.push('❌ DNS server not responding')
+  if (results.speedTest && results.speedTest.downloadMbps < 5) issues.push(`⚠️ Very slow connection: ${results.speedTest.downloadMbps} Mbps`)
+  if (results.gateway && !results.gateway.reachable) issues.push('❌ Default gateway unreachable — local network issue')
+  if (issues.length === 0) issues.push('✅ Network appears healthy')
+
+  results.issues = issues
+  results.summary = issues.join('\n')
+  return results
+})
+
+ipcMain.handle('doctor:highCpuProcesses', async () => {
+  try {
+    const si = require('systeminformation')
+    const processes = await si.processes()
+    const topCpu = processes.list.sort((a, b) => b.cpu - a.cpu).slice(0, 8).map(p => ({
+      name: p.name, pid: p.pid, cpu: Math.round(p.cpu * 10) / 10, memMB: Math.round(p.mem_rss / 1024 / 1024 * 10) / 10,
+    }))
+    const topMem = processes.list.sort((a, b) => b.mem_rss - a.mem_rss).slice(0, 8).map(p => ({
+      name: p.name, pid: p.pid, cpu: Math.round(p.cpu * 10) / 10, memMB: Math.round(p.mem_rss / 1024 / 1024 * 10) / 10,
+    }))
+    const totalCpu = Math.round(processes.all * 10) / 10
+    return { success: true, totalCpu, topCpu, topMem, count: processes.list.length }
+  } catch (e) {
+    return { success: false, error: e.message, topCpu: [], topMem: [] }
+  }
+})
+
+ipcMain.handle('doctor:killProcess', async (_e, { pid, name } = {}) => {
+  if (!pid && !name) return { success: false, error: 'Provide pid or name' }
+  try {
+    const target = pid ? `/PID ${pid}` : `/IM ${name}`
+    const output = execSync(`taskkill /F ${target}`, { timeout: 10000, stdio: 'pipe' }).toString()
+    return { success: true, details: output.trim(), pid, name }
+  } catch (e) {
+    return { success: false, error: e.message, details: `Failed to kill process (may need admin)` }
+  }
+})
+
+ipcMain.handle('doctor:startupItems', async () => {
+  try {
+    const output = execSync('powershell -Command "Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location | ConvertTo-Json"', { timeout: 10000, stdio: 'pipe' }).toString()
+    const items = JSON.parse(output)
+    const list = Array.isArray(items) ? items : (items ? [items] : [])
+    return { success: true, count: list.length, items: list.slice(0, 30).map(i => ({ name: i.Name, command: i.Command, location: i.Location })) }
+  } catch (e) {
+    return { success: false, error: e.message, items: [] }
+  }
+})
+
+ipcMain.handle('doctor:systemInfo', async () => {
+  try {
+    const si = require('systeminformation')
+    const [cpu, mem, osInfo, disk, versions] = await Promise.all([
+      si.cpu(),
+      si.mem(),
+      si.osInfo(),
+      si.fsSize(),
+      si.versions(),
+    ])
+    return {
+      success: true,
+      cpu: { manufacturer: cpu.manufacturer, brand: cpu.brand, cores: cpu.cores, speed: cpu.speed },
+      memory: { totalGB: Math.round(mem.total / 1024 / 1024 / 1024 * 10) / 10, freeGB: Math.round(mem.free / 1024 / 1024 / 1024 * 10) / 10 },
+      os: { platform: osInfo.platform, distro: osInfo.distro, release: osInfo.release, kernel: osInfo.kernel, arch: osInfo.arch },
+      disks: disk.slice(0, 4).map(d => ({ fs: d.fs, sizeGB: Math.round(d.size / 1024 / 1024 / 1024 * 10) / 10, usedGB: Math.round(d.used / 1024 / 1024 / 1024 * 10) / 10, usePct: d.use })),
+      versions: { node: versions.node, npm: versions.npm, os: osInfo.distro },
+      uptimeHours: Math.round(os.uptime() / 3600 * 10) / 10,
+      hostname: os.hostname(),
+    }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
 // ── SYSTEM DOCTOR IPC Handlers ────────────────────────────────
 
 ipcMain.handle('doctor:cleanTemp', async () => {
