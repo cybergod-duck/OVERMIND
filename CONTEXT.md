@@ -49,7 +49,7 @@ Overmind/
 ├── assets/                    # Icons, logos
 │   ├── icon.ico
 │   ├── icon.png
-│   ├── bcbox.png
+│   ├── overmind.png
 │   └── ...
 ├── public/                    # Static assets
 └── src/

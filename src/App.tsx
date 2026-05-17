@@ -487,7 +487,7 @@ function App() {
   const [vaultNormalizeCount, setVaultNormalizeCount] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [customPrompt, setCustomPrompt] = useState(() => localStorage.getItem('lockbox_v4_sysprompt') || '')
+  const [customPrompt, setCustomPrompt] = useState(() => localStorage.getItem('overmind_v4_sysprompt') || '')
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
   const [healthData, setHealthData]       = useState<any>(null)
   const [doctorLog, setDoctorLog]         = useState<string[]>([])
@@ -593,15 +593,29 @@ function App() {
     fetchOllamaModels()
   }, [ollamaHost])
 
+  // ── Migrate old localStorage keys ──────────────────────────
+  useEffect(() => {
+    const migrateKey = (oldKey: string, newKey: string) => {
+      const val = localStorage.getItem(oldKey)
+      if (val) {
+        localStorage.setItem(newKey, val)
+        localStorage.removeItem(oldKey)
+      }
+    }
+    migrateKey('lockbox_v4_secrets', 'overmind_v4_secrets')
+    migrateKey('lockbox_v4_model', 'overmind_v4_model')
+    migrateKey('lockbox_v4_sysprompt', 'overmind_v4_sysprompt')
+  }, [])
+
   // Load secrets from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('lockbox_v4_secrets')
+    const saved = localStorage.getItem('overmind_v4_secrets')
     if (saved) setSecrets(JSON.parse(saved))
   }, [])
 
   // Load saved selected model
   useEffect(() => {
-    const saved = localStorage.getItem('lockbox_v4_model')
+    const saved = localStorage.getItem('overmind_v4_model')
     if (saved) {
       setSelectedModel(saved)
       modelUserSelected.current = true
@@ -658,17 +672,17 @@ function App() {
 
   // Persist secrets
   useEffect(() => {
-    localStorage.setItem('lockbox_v4_secrets', JSON.stringify(secrets))
+    localStorage.setItem('overmind_v4_secrets', JSON.stringify(secrets))
   }, [secrets])
 
   // Persist selected model
   useEffect(() => {
-    localStorage.setItem('lockbox_v4_model', selectedModel)
+    localStorage.setItem('overmind_v4_model', selectedModel)
   }, [selectedModel])
 
   // Persist custom system prompt
   useEffect(() => {
-    localStorage.setItem('lockbox_v4_sysprompt', customPrompt)
+    localStorage.setItem('overmind_v4_sysprompt', customPrompt)
   }, [customPrompt])
 
   // Auto-scroll chat
@@ -1620,7 +1634,7 @@ function App() {
   }
 
   return (
-    <div className="lockbox">
+    <div className="overmind">
       <header className="header">
         <div className="logo">Overmind</div>
         <div className="status">

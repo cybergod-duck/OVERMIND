@@ -396,7 +396,7 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
       setMessages(prev => [...prev, { role: 'assistant', content: aiText }])
       log(`AI_RESPONSE: ${aiText.slice(0, 60)}...`)
 
-      // Legacy tool token parsing — some tools need lockboxTools, PRIVACY_SCAN uses privacyAPI
+      // Legacy tool token parsing — some tools need overmindLegacyTools, PRIVACY_SCAN uses privacyAPI
       const tokens = parseToolTokens(aiText)
       for (const token of tokens) {
         log(`TOOL_TRIGGERED: ${token.type}`)
@@ -405,9 +405,9 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
         try {
           let result: string
           if (token.type === 'DIAGNOSE_NETWORK' || token.type === 'DIAGNOSE_SYSTEM' || token.type === 'LIST_FOLDER') {
-            const tools = (window as any).lockboxTools
+            const tools = (window as any).overmindLegacyTools
             if (!tools) {
-              result = 'TOOL_ERROR: lockboxTools not available'
+              result = 'TOOL_ERROR: overmindLegacyTools not available'
             } else if (token.type === 'DIAGNOSE_NETWORK') {
               result = await tools.diagnoseNetwork()
             } else if (token.type === 'DIAGNOSE_SYSTEM') {

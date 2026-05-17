@@ -1,9 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('lockboxTools', {
-  diagnoseNetwork: () => ipcRenderer.invoke('lockbox:diagnoseNetwork'),
-  diagnoseSystem: () => ipcRenderer.invoke('lockbox:diagnoseSystem'),
-  listFolder: (folderPath) => ipcRenderer.invoke('lockbox:listFolder', folderPath),
+contextBridge.exposeInMainWorld('overmindLegacyTools', {
+  diagnoseNetwork: () => ipcRenderer.invoke('legacy:diagnoseNetwork'),
+  diagnoseSystem: () => ipcRenderer.invoke('legacy:diagnoseSystem'),
+  listFolder: (folderPath) => ipcRenderer.invoke('legacy:listFolder', folderPath),
 })
 
 contextBridge.exposeInMainWorld('systemAPI', {

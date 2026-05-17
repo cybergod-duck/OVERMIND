@@ -86,7 +86,7 @@ wss.on('connection', (ws) => {
 // ── Persistent settings store ──────────────────────────────────
 
 const store = new Store({
-  name: 'lockbox-settings',
+  name: 'overmind-settings',
   defaults: {
     defaultModel: '',
     systemPrompt: '',
@@ -311,9 +311,9 @@ ipcMain.handle('folder:removeWatched', async (_e, folderPath) => {
   }
 })
 
-// ── Legacy lockbox IPC ───────────────────────────────────────
+// ── Legacy IPC ───────────────────────────────────────────────
 
-ipcMain.handle('lockbox:diagnoseNetwork', async () => {
+ipcMain.handle('legacy:diagnoseNetwork', async () => {
   try {
     const lines = []
     lines.push('=== NETWORK DIAGNOSTIC ===')
@@ -377,7 +377,7 @@ ipcMain.handle('lockbox:diagnoseNetwork', async () => {
   }
 })
 
-ipcMain.handle('lockbox:diagnoseSystem', async () => {
+ipcMain.handle('legacy:diagnoseSystem', async () => {
   try {
     const si = require('systeminformation')
     const lines = []
@@ -420,7 +420,7 @@ ipcMain.handle('lockbox:diagnoseSystem', async () => {
   }
 })
 
-ipcMain.handle('lockbox:listFolder', async (_event, folderPath) => {
+ipcMain.handle('legacy:listFolder', async (_event, folderPath) => {
   try {
     if (!folderPath) return 'ERROR: No folder path provided.'
     if (!fs.existsSync(folderPath)) return `ERROR: Path does not exist: ${folderPath}`
