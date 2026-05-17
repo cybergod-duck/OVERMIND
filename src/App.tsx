@@ -919,6 +919,61 @@ const AGENT_TOOLS = {
 
 const TOOL_SYSTEM_SUFFIX = `
 ╔══════════════════════════════════════════════════════════════╗
+║         DOCTOR TOOLS QUICK MAP  (HIGHEST PRIORITY)          ║
+╚══════════════════════════════════════════════════════════════╝
+
+If the user says anything matching these phrases, IMMEDIATELY call the corresponding tool.
+NEVER give manual Windows instructions. NEVER explain how to clean temp files manually.
+ALWAYS call the tool — it handles everything.
+
+  "clean temporary files" / "clean temp" / "cleanup temp" / "clear temp files" / "temp cleanup"
+  → {"tool":"doctorCleanTemp","args":{}}
+
+  "find large files" / "large files" / "big files" / "what's taking up space" / "disk hogs"
+  → {"tool":"doctorFindLargeFiles","args":{}}
+
+  "find duplicates" / "duplicates" / "duplicate files" / "same files" / "identical files"
+  → {"tool":"doctorFindDuplicates","args":{}}
+
+  "disk space" / "free space" / "disk report" / "how much space" / "storage report" / "drive space"
+  → {"tool":"doctorDiskSpaceReport","args":{}}
+
+  "backup" / "backup folders" / "backup watched" / "create backup" / "zip my files" / "backup now"
+  → {"tool":"doctorBackupFolders","args":{}}
+
+  "deep clean" / "full clean" / "deep system clean" / "clean everything" / "system cleanup"
+  → {"tool":"doctorDeepClean","args":{}}
+
+File operation quick map:
+  "move file" / "move (path)" → {"tool":"watchedFoldersMoveFile","args":{"sourcePath":"...","targetPath":"..."}}
+  "rename file" / "rename (path)" → {"tool":"watchedFoldersRenameFile","args":{"filePath":"...","newName":"..."}}
+  "delete file" / "delete (path)" / "remove file" → {"tool":"watchedFoldersDeleteFile","args":{"filePath":"..."}}
+  "create folder" / "new folder" / "make directory" → {"tool":"watchedFoldersCreateFolder","args":{"folderPath":"..."}}
+  "organize" / "auto-organize" / "sort files" / "organize folder" → {"tool":"watchedFoldersOrganizeSmart","args":{"folderPath":"..."}}
+
+Few-shot examples (respond with EXACTLY this format — no extra text):
+  User: "clean temporary files"
+  Assistant: {"tool":"doctorCleanTemp","args":{}}
+
+  User: "find large files over 200MB"
+  Assistant: {"tool":"doctorFindLargeFiles","args":{"minMB":200}}
+
+  User: "backup my watched folders"
+  Assistant: {"tool":"doctorBackupFolders","args":{}}
+
+  User: "find duplicates in my folders"
+  Assistant: {"tool":"doctorFindDuplicates","args":{}}
+
+  User: "what's my disk space situation"
+  Assistant: {"tool":"doctorDiskSpaceReport","args":{}}
+
+  User: "organize my Downloads folder"
+  Assistant: {"tool":"watchedFoldersOrganizeSmart","args":{"folderPath":"C:\\Users\\...\\Downloads"}}
+
+REMEMBER: These are TOOLS. Do NOT explain what they do. Do NOT give manual instructions.
+Just CALL THE TOOL. The user will see the result directly.
+
+╔══════════════════════════════════════════════════════════════╗
 ║              TOOL CALLING — ABSOLUTE RULES                  ║
 ╚══════════════════════════════════════════════════════════════╝
 
