@@ -250,7 +250,7 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
 
   // Doctor diagnosis context — inject structured findings if a diagnostic chain ran
   const doctorContext = doctorDiagnosis
-    ? `\n\n[DOCTOR DIAGNOSTIC RESULTS]\n${doctorDiagnosis.label}\n${doctorDiagnosis.summary}\n\nFindings:\n${doctorDiagnosis.findings.map(f => `[${f.severity.toUpperCase()}] ${f.icon} ${f.title}: ${f.detail}`).join('\n')}\n\nFull data available in the [DOCTOR DATA] message below.`
+    ? `\n\n[DOCTOR DIAGNOSTIC RESULTS]\n${doctorDiagnosis.label}\n${doctorDiagnosis.summary}\n\nFindings (prioritized):\n${doctorDiagnosis.findings.map(f => `[${f.severity.toUpperCase()}] ${f.icon} ${f.title}: ${f.detail}`).join('\n')}\n\nFull data available in the [DOCTOR DATA] message below.`
     : ''
 
   const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext + doctorContext
@@ -287,9 +287,12 @@ export async function sendMessage(deps: SendMessageDeps): Promise<void> {
 
     // Inject doctor diagnostic findings as structured data for AI reasoning
     if (doctorDiagnosis) {
+      const fixSection = doctorDiagnosis.fixOptions.length > 0
+        ? `\n\nAvailable Fix Options:\n${doctorDiagnosis.fixOptions.map((f, i) => `  ${i + 1}) ${f.label} — ${f.description}`).join('\n')}\n\nTo execute a fix, call: {"tool":"${doctorDiagnosis.fixOptions[0].tool}","args":${JSON.stringify(doctorDiagnosis.fixOptions[0].args)}}\nPresent these as numbered options to the user. When they pick one, call the corresponding tool. Always confirm before destructive actions.`
+        : ''
       msgsForAI.push({
         role: 'user',
-        content: `[DOCTOR DATA]\nDiagnostic category: ${doctorDiagnosis.category}\nSummary: ${doctorDiagnosis.summary}\n\nFindings:\n${doctorDiagnosis.findings.map(f => `[${f.severity.toUpperCase()}] ${f.icon} ${f.title}: ${f.detail}`).join('\n')}\n\nRaw data:\n${JSON.stringify(doctorDiagnosis.rawData, null, 2)}\n\nUse these findings to answer the user's question about their system. If any issues need fixing (e.g., flush DNS, kill process, run SFC), you can make additional tool calls. Always ask for user confirmation before making changes.`,
+        content: `[DOCTOR DATA]\nDiagnostic category: ${doctorDiagnosis.category}\nSummary: ${doctorDiagnosis.summary}\n\nFindings (prioritized by severity):\n${doctorDiagnosis.findings.map(f => `[${f.severity.toUpperCase()}] ${f.icon} ${f.title}: ${f.detail}`).join('\n')}${fixSection}\n\nRaw data:\n${JSON.stringify(doctorDiagnosis.rawData, null, 2)}\n\nUse these findings to answer the user's question. Synthesize naturally — like a helpful tech friend, not a robot. Present issues as a numbered list. Offer to fix with simple numbered options. Always ask before making changes.`,
       })
     }
 

@@ -1272,15 +1272,19 @@ ipcMain.handle('doctor:networkFullDiagnostics', async () => {
 ipcMain.handle('doctor:highCpuProcesses', async () => {
   try {
     const si = require('systeminformation')
-    const processes = await si.processes()
+    const [processes, load] = await Promise.all([
+      si.processes(),
+      si.currentLoad(),
+    ])
+    const cpuLoad = Math.round(load.currentLoad * 10) / 10
+    const totalProcessCount = processes.all
     const topCpu = processes.list.sort((a, b) => b.cpu - a.cpu).slice(0, 8).map(p => ({
       name: p.name, pid: p.pid, cpu: Math.round(p.cpu * 10) / 10, memMB: Math.round(p.mem_rss / 1024 / 1024 * 10) / 10,
     }))
     const topMem = processes.list.sort((a, b) => b.mem_rss - a.mem_rss).slice(0, 8).map(p => ({
       name: p.name, pid: p.pid, cpu: Math.round(p.cpu * 10) / 10, memMB: Math.round(p.mem_rss / 1024 / 1024 * 10) / 10,
     }))
-    const totalCpu = Math.round(processes.all * 10) / 10
-    return { success: true, totalCpu, topCpu, topMem, count: processes.list.length }
+    return { success: true, cpuLoad, totalProcessCount, topCpu, topMem, count: processes.list.length }
   } catch (e) {
     return { success: false, error: e.message, topCpu: [], topMem: [] }
   }
