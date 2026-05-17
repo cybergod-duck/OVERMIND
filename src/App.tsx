@@ -579,14 +579,97 @@ const AGENT_TOOLS = {
     const roots: string[] = await window.folderAPI.getWatched()
     if (roots.length === 0) return { error: 'No watched folders configured.' }
 
-    const targetPaths = args.folderPath
-      ? [args.folderPath]
-      : roots
+    const targetPaths = args.folderPath ? [args.folderPath] : roots
     const maxDepth = args.maxDepth ?? 3
     const includeExts = args.includeFileTypes
       ? new Set(args.includeFileTypes.map(e => e.startsWith('.') ? e.toLowerCase() : `.${e.toLowerCase()}`))
-      : null // null means include all types
+      : null
     const MAX_FILES_PER_DIR = 200
+
+    // ── OCR correction map ──────────────────────────────────────────
+    const OCR_FIXES: [RegExp, string][] = [
+      [/BANE\s+OF\s+AMERICA/gi, 'BANK OF AMERICA'],
+      [/8ANK\s*(OF)?\s*AMERICA/gi, 'BANK OF AMERICA'],
+      [/8ank/gi, 'Bank'],
+      [/1NVOICE/gi, 'INVOICE'],
+      [/1NC/gi, 'INC'],
+      [/C0RP/gi, 'CORP'],
+      [/C0MPANY/gi, 'COMPANY'],
+      [/ACCOUNT/gi, 'ACCOUNT'],
+      [/STATEMENT/gi, 'STATEMENT'],
+      [/PAYMENT/gi, 'PAYMENT'],
+      [/BALANCE/gi, 'BALANCE'],
+      [/TRANSACTION/gi, 'TRANSACTION'],
+      [/DEPOSIT/gi, 'DEPOSIT'],
+      [/WITHDRAWAL/gi, 'WITHDRAWAL'],
+      [/INTEREST/gi, 'INTEREST'],
+      [/SSN[:\s]*\d{3}-?\d{2}-?\d{4}/gi, 'SSN: [REDACTED]'],
+      [/\d{3}-?\d{2}-?\d{4}/g, '[SSN REDACTED]'],
+    ]
+
+    // ── Topic classification map ────────────────────────────────────
+    const TOPIC_MAP: [RegExp, string][] = [
+      [/child\s*support|cs\s*(case|payment|order)/i, '👶 Child Support'],
+      [/bank\s*(of\s*)?america|bofa|chase|wells\s*fargo|us\s*bank|pnc/i, '🏦 Banking'],
+      [/court|judge|docket|case\s*#?\s*|filing|legal|attorney|lawyer|lawsuit/i, '⚖️ Legal/Court'],
+      [/health|medical|medic|hospital|doctor|patient|insurance|hipaa/i, '🏥 Healthcare'],
+      [/tax|irs|1040|w-?2|1099|tax\s*return|wages|withholding/i, '💰 Taxes'],
+      [/payroll|wage|earning|pay\s*stub|direct\s*deposit/i, '💵 Payroll/Income'],
+      [/resume|cv|curriculum\s*vitae/i, '📋 Resume/CV'],
+      [/transcript|diploma|degree|academic|school|university|college|gpa|enrollment/i, '🎓 Education'],
+      [/bank\s*statement|account.*statement|monthly.*statement/i, '🏦 Bank Statements'],
+      [/mortgage|loan|deed|title|property|real\s*estate|escrow|homeowner/i, '🏠 Real Estate/Mortgage'],
+      [/invoice|bill|receipt|payment\s*(history|record)|charge/i, '🧾 Invoices/Bills'],
+      [/id\s*card|passport|license|identification|ssn|social\s*security/i, '🪪 Identification'],
+      [/divorce|custody|parenting\s*plan|visitation|alimony|spousal\s*support/i, '⚖️ Family Law'],
+      [/401k|retirement|ira|roth|pension|investment|stock|bond/i, '📈 Investments/Retirement'],
+      [/paystub|pay\s*stub|earnings\s*statement|wage\s*statement/i, '💵 Pay Stubs'],
+      [/utility|electric|gas|water|power|phone\s*bill|internet|cell/i, '📞 Utilities'],
+      [/lease|rental|tenant|landlord|security\s*deposit/i, '🏠 Rental/Lease'],
+    ]
+
+    // ── Text cleaning function ──────────────────────────────────────
+    function cleanPreview(raw: string, maxLen: number = 250): string {
+      if (!raw) return ''
+      let t = raw
+      // 1. Apply OCR corrections
+      for (const [pattern, replacement] of OCR_FIXES) {
+        t = t.replace(pattern, replacement)
+      }
+      // 2. Normalize line endings
+      t = t.replace(/\r\n/g, '\n')
+      // 3. Remove page headers/footers (common patterns)
+      t = t.replace(/^\s*Page\s+\d+\s+of\s+\d+\s*$/gim, '')
+      t = t.replace(/^\s*\d+\s*$/gm, '') // lone page numbers
+      t = t.replace(/^.{0,20}(Confidential|Privileged|Attorney.Client).{0,40}$/gim, '')
+      // 4. Collapse excessive whitespace
+      t = t.replace(/\n{3,}/g, '\n\n')
+      t = t.replace(/[ \t]{3,}/g, ' ')
+      // 5. Remove lines that are just dates or document labels
+      t = t.replace(/^\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\s*$/gim, '')
+      t = t.replace(/^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/gm, '')
+      t = t.replace(/^\s*Document\s+(Title|Type|Date|Number|ID)[:\s].*$/gim, '')
+      t = t.trim()
+      // 6. Take first meaningful segment (skip leading garbage)
+      const segments = t.split(/\n{2,}/).filter(s => s.trim().length > 10)
+      const cleanStr = segments.length > 0 ? segments[0] : t
+      // 7. Truncate to maxLen clean chars at word boundary
+      const singleLine = cleanStr.replace(/\n/g, ' ').replace(/  +/g, ' ').trim()
+      if (singleLine.length <= maxLen) return singleLine
+      return singleLine.slice(0, singleLine.lastIndexOf(' ', maxLen)) + '...'
+    }
+
+    // ── Topic classification ────────────────────────────────────────
+    function classifyTopics(text: string, fileName: string): string[] {
+      const combined = `${fileName} ${text}`.toLowerCase()
+      const matched: string[] = []
+      for (const [pattern, label] of TOPIC_MAP) {
+        if (pattern.test(combined) && !matched.includes(label)) {
+          matched.push(label)
+        }
+      }
+      return matched.length > 0 ? matched.slice(0, 3) : ['📄 General']
+    }
 
     type ScanNode = {
       path: string
@@ -595,6 +678,7 @@ const AGENT_TOOLS = {
       ext: string
       children?: ScanNode[]
       preview?: string
+      topics?: string[]
     }
 
     const walk = async (basePath: string, depth: number = 0): Promise<{ node: ScanNode; fileCount: number; dirCount: number; truncated: boolean }> => {
@@ -626,11 +710,9 @@ const AGENT_TOOLS = {
             dirCount++
           }
         } else {
-          // Check file type filter
           if (includeExts !== null && !includeExts.has(entry.ext.toLowerCase())) continue
 
           fileCount++
-          // Read file content for preview (PDF or text)
           let preview = ''
           const isPdf = entry.ext.toLowerCase() === '.pdf'
           try {
@@ -638,18 +720,16 @@ const AGENT_TOOLS = {
             if (content.startsWith('ERROR:') || content.startsWith('READ FILE ERROR') || content.startsWith('PDF PARSE ERROR')) {
               preview = `[unreadable: ${content.slice(0, 60)}]`
             } else if (isPdf) {
-              // PDF content comes with [PDF: filename] header — extract first 300 chars of body
               const body = content.replace(/^\[PDF: .*?\](?:\nPages: \d+)?\n\n?/, '')
-              preview = body.slice(0, 300).replace(/\n/g, ' ')
-              if (body.length > 300) preview += '...'
+              preview = cleanPreview(body, 250)
             } else {
-              preview = content.slice(0, 300).replace(/\n/g, ' ')
-              if (content.length > 300) preview += '...'
+              preview = cleanPreview(content, 250)
             }
           } catch {
             preview = '[read error]'
           }
-          node.children!.push({ path: entry.path, name: entry.name, isDir: false, ext: entry.ext, preview })
+          const topics = classifyTopics(preview, entry.name)
+          node.children!.push({ path: entry.path, name: entry.name, isDir: false, ext: entry.ext, preview, topics })
         }
       }
 
@@ -661,16 +741,17 @@ const AGENT_TOOLS = {
       structure: string
       totalFiles: number
       totalDirs: number
-      fileList: { name: string; path: string; preview: string }[]
+      fileList: { name: string; path: string; preview: string; topics: string[] }[]
+      topTopics: { topic: string; count: number; files: string[] }[]
       summary: string
     }[] = []
 
     for (const rootPath of targetPaths) {
       const { node, fileCount, dirCount } = await walk(rootPath, 0)
 
-      // Build structured tree string
       const treeLines: string[] = []
-      const fileList: { name: string; path: string; preview: string }[] = []
+      const fileList: { name: string; path: string; preview: string; topics: string[] }[] = []
+      const topicIndex: Map<string, { count: number; files: string[] }> = new Map()
 
       const renderTree = (n: ScanNode, indent: number = 0) => {
         const prefix = '  '.repeat(indent)
@@ -678,33 +759,45 @@ const AGENT_TOOLS = {
           treeLines.push(`${prefix}📁 ${n.name}/`)
           for (const child of (n.children || [])) renderTree(child, indent + 1)
         } else {
-          const icon = n.ext === '.pdf' ? '📄' : '📄'
-          treeLines.push(`${prefix}${icon} ${n.name}`)
+          treeLines.push(`${prefix}📄 ${n.name}`)
           if (n.preview) {
-            fileList.push({ name: n.name, path: n.path, preview: n.preview })
+            fileList.push({ name: n.name, path: n.path, preview: n.preview, topics: n.topics || [] })
+            for (const topic of (n.topics || [])) {
+              const entry = topicIndex.get(topic) || { count: 0, files: [] }
+              entry.count++
+              if (entry.files.length < 5) entry.files.push(n.name)
+              topicIndex.set(topic, entry)
+            }
           }
         }
       }
       renderTree(node)
 
-      // Build content summary from file previews
-      const summaryLines: string[] = []
-      const pdfFiles = fileList.filter(f => f.name.toLowerCase().endsWith('.pdf'))
-      const txtFiles = fileList.filter(f => !f.name.toLowerCase().endsWith('.pdf'))
+      // Build topic-grouped summary
+      const sortedTopics = [...topicIndex.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([topic, data]) => ({ topic, count: data.count, files: data.files }))
 
-      if (pdfFiles.length > 0) {
-        summaryLines.push(`📑 PDF Documents (${pdfFiles.length}):`)
-        for (const f of pdfFiles.slice(0, 10)) {
-          summaryLines.push(`  • ${f.name}: ${f.preview.slice(0, 120)}`)
+      const summaryLines: string[] = []
+
+      if (sortedTopics.length > 0) {
+        summaryLines.push(`📊 Documents by Topic:`)
+        for (const t of sortedTopics.slice(0, 8)) {
+          const fileSample = t.files.length > 0 ? ` (e.g. ${t.files.join(', ')})` : ''
+          summaryLines.push(`  ${t.topic}: ${t.count} file(s)${fileSample}`)
         }
-        if (pdfFiles.length > 10) summaryLines.push(`  ... and ${pdfFiles.length - 10} more PDFs`)
+        if (sortedTopics.length > 8) summaryLines.push(`  ... and ${sortedTopics.length - 8} more topics`)
       }
-      if (txtFiles.length > 0) {
-        summaryLines.push(`📄 Other Files (${txtFiles.length}):`)
-        for (const f of txtFiles.slice(0, 5)) {
-          summaryLines.push(`  • ${f.name}: ${f.preview.slice(0, 120)}`)
+
+      // Detail listing with preview excerpts
+      if (fileList.length > 0) {
+        summaryLines.push(``)
+        summaryLines.push(`📄 File Previews:`)
+        for (const f of fileList.slice(0, 15)) {
+          const preview = f.preview.length > 200 ? f.preview.slice(0, 200) + '...' : f.preview
+          summaryLines.push(`  • ${f.name}: ${preview}`)
         }
-        if (txtFiles.length > 5) summaryLines.push(`  ... and ${txtFiles.length - 5} more files`)
+        if (fileList.length > 15) summaryLines.push(`  ... and ${fileList.length - 15} more files`)
       }
 
       reports.push({
@@ -713,6 +806,7 @@ const AGENT_TOOLS = {
         totalFiles: fileCount,
         totalDirs: dirCount,
         fileList,
+        topTopics: sortedTopics,
         summary: summaryLines.join('\n') || '(no readable content found)',
       })
     }
@@ -721,7 +815,7 @@ const AGENT_TOOLS = {
       count: reports.length,
       reports,
       combinedSummary: reports.map(r =>
-        `📁 ${r.root}\nFiles: ${r.totalFiles}, Subfolders: ${r.totalDirs}\n${r.summary}`
+        `📁 ${r.root}\nFiles: ${r.totalFiles}, Subfolders: ${r.totalDirs}\nTopics: ${r.topTopics.map(t => `${t.topic} (${t.count})`).join(', ') || 'none'}\n${r.summary}`
       ).join('\n\n'),
     }
   },
@@ -842,68 +936,111 @@ SUMMARY: Question about folders → {"tool":"watchedFoldersDeepScan","args":{}}
 ║              DOCUMENT ANALYSIS MODE                         ║
 ╚══════════════════════════════════════════════════════════════╝
 
-When the user asks about content, summaries, or insights from watched folders
-(e.g. "summarize everything about taxes", "what documents are in Laken's folder",
-"find bank statements", "what does this PDF say"):
+When the user asks about CONTENT, SUMMARIES, or INSIGHTS from watched folders
+(e.g. "summarize everything", "what documents are in Laken's folder",
+"find bank statements", "what does this PDF say", "tell me about [person]"):
 
-Step 1 — Call watchedFoldersAnalyze FIRST
-  {"tool":"watchedFoldersAnalyze","args":{}}
-  Optionally pass folderPath, maxDepth, or includeFileTypes to narrow the scan.
+Step 1 — Use the PRE-SCANNED data (already attached)
+  The system already ran watchedFoldersAnalyze() before your response.
+  The [ATTACHED: REAL FOLDER DATA] message contains the full report with:
+  • reports[].topTopics — documents grouped by topic (Banking, Legal, Healthcare, etc.)
+  • reports[].fileList[].preview — cleaned 250-char previews per file
+  • reports[].combinedSummary — high-level overview
+  DO NOT call watchedFoldersAnalyze again — the data is already here.
 
-Step 2 — Read specific files for deeper detail
-  After the report arrives, if more depth is needed, read individual files:
-  {"tool":"folderRead","args":{"path":"C:\\Users\\...\\document.pdf"}}
+Step 2 — SYNTHESIZE, do NOT dump raw data
+  ❌ BAD: Listing every file with its raw preview text
+  ❌ BAD: "The report shows 12 files. File1: ... File2: ... File3: ..."
+  ✅ GOOD: Organize by TOPIC or THEME. Create a coherent narrative.
+  ✅ GOOD: For person queries, compile a "Person Profile" with key facts.
 
-Step 3 — Synthesize a clear, well-structured summary
-  Organize by folder, then by document type. Use headings, bullet points,
-  and short preview excerpts. Be specific — reference real file names,
-  real content snippets, and real folder paths.
+Step 3 — For queries about a PERSON (e.g. "Laken Lybrand", "HER"):
+  Create a structured Person Profile Summary with sections:
+  • Full Name / Identifiers
+  • Relationships (children, family members mentioned)
+  • Financials (bank accounts, income sources, child support amounts)
+  • Legal Matters (court cases, filings, custody orders)
+  • Healthcare / Education / Employment (as relevant)
+  • Key Dates (birth dates, filing deadlines, court dates)
+  • Source Documents (which files contain which facts)
 
-Step 4 — Never guess or hallucinate
-  If a file's content is empty, unreadable, or unclear, say so.
-  Only reference data that actually came from the tool results.
-  If the user asks about a document not found in the scan, say:
-  "I don't see that document in the scanned folders."
+Step 4 — For queries about a TOPIC (e.g. "taxes", "bank statements"):
+  • Group documents by sub-topic within the theme
+  • Extract specific numbers, dates, entities from previews
+  • Summarize totals and key findings across documents
+  • Mention which folder each document lives in
 
-=== GOOD RESPONSE EXAMPLES FOR DOCUMENT QUESTIONS ===
+Step 5 — Write in clean, natural language with selective excerpts
+  • Use 📁 for folders, 📄 for files
+  • Include brief content excerpts only when they add value
+  • Never dump 10+ preview lines in a row — synthesize
+  • If OCR text is garbled, say "text quality is poor — likely scanned"
+  • Never guess or hallucinate — if data is absent, say "not found in scanned folders"
 
-✅ GOOD — User: "Summarize everything about taxes in my watched folders"
-  {"tool":"watchedFoldersAnalyze","args":{}}
-  [system returns report]
-  "I found tax-related documents across your watched folders:
-  📁 C:\Users\...\Taxes 2025\
-    📄 2024_Return.pdf — 'Form 1040, Line 42: $12,500 refund claimed...'
-    📄 W2_2024.pdf — 'Employer: Acme Corp, Wages: $85,000...'
-    📄 Estimated_Payments_Q4.pdf — 'Estimated tax payment of $2,500...'
-  📁 C:\Users\...\Laken\Finance\
-    📄 1099_Int.pdf — 'Interest Income: $340 from Chase Bank...'
-  Summary: Your watched folders contain 4 tax documents totaling ...
-  Most recent filing shows a $12,500 refund claim."
+Step 6 — Never output raw tool-call JSON as your answer
+  If you see {"tool":"...","args":{}} in your own output — STOP.
+  That is a TOOL CALL, not a response. The tool already ran.
+  Answer in PLAIN ENGLISH with narrative synthesis.
 
-✅ GOOD — User: "What personal documents are in the Laken folder?"
-  {"tool":"watchedFoldersAnalyze","args":{"folderPath":"C:\\Users\\...\\Laken"}}
-  [system returns report]
-  "Scanning Laken's folder, I found these personal documents:
+=== GOOD RESPONSE EXAMPLES ===
+
+✅ GOOD — User: "What can you tell me about Laken Lybrand?"
+  (uses pre-scanned data)
+  "📋 Person Profile: Laken Lybrand
+  👶 Child Support: $450/month ordered in case CS-2024-1234.
+    Source: Laken/Child Support/Order_2024.pdf
+  🏦 Banking: Bank of America account ending in 4832.
+    Last statement (Jan 2025) showed $2,340 balance.
+    Source: Laken/Finance/BofA_Jan2025.pdf
+  🏥 Healthcare: Cigna PPO plan, $30 copay, dental included.
+    Source: Laken/Medical/Insurance_2025.pdf
+  ⚖️ Legal: Custody filing from March 2024 (Family Court #FC-2024-567).
+    Source: Laken/Legal/Custody_Filing.pdf
+  Note: No tax documents or employment records found in scanned folders."
+
+✅ GOOD — User: "Summarize everything in my watched folders"
+  (uses pre-scanned data)
+  "📊 Watched Folders Overview
+  Total: 2 folders, 24 files across 7 topics
+
   📁 Laken/
-    📄 Laken_Transcript.pdf — 'University of ... GPA: 3.7...'
-    📄 Medical_Records.pdf — 'Patient: Laken, DOB: ...'
-    📄 Resume_2025.pdf — 'Full Stack Developer, React/Node.js...'
-  No bank statements or financial documents found in this folder."
+    🏦 Banking (5 files): Bank of America statements from Jan-Mar 2025,
+      Chase credit card summary
+    👶 Child Support (3 files): $450/month order + payment history
+    🏥 Healthcare (4 files): Insurance card, provider directory
+    ⚖️ Legal (2 files): Custody filing, court notice
+    🎓 Education (1 file): University transcript
+
+  📁 Taxes 2025/
+    💰 Taxes (5 files): 2024 tax return (refund $1,240), W-2, 1099-INT
+    🏠 Real Estate (1 file): Property tax assessment
+
+  Key financial data: ~$3,200/month net income, $450 child support paid,
+  $2,340 bank balance, $1,240 tax refund expected."
 
 ✅ GOOD — User: "Find all bank statements"
-  {"tool":"watchedFoldersAnalyze","args":{"includeFileTypes":["pdf"]}}
-  [system returns report]
-  "I found PDFs mentioning bank statements:
-  📁 C:\Users\...\Finance\
-    📄 Chase_Jan2025.pdf — 'Chase checking statement, ending in 4832...'
-    📄 Chase_Feb2025.pdf — 'Chase checking statement, ending in 4832...'
-    📄 BofA_Q1_2025.pdf — 'Bank of America savings statement...'
-  Total: 3 bank statement PDFs found."
+  (uses pre-scanned data)
+  "🏦 Bank Statements found:
+  📁 Laken/Finance/
+    📄 BofA_Jan2025.pdf — 'Bank of America, checking 4832, $2,340 balance'
+    📄 BofA_Feb2025.pdf — 'Bank of America, checking 4832, $1,890 balance'
+    📄 Chase_CC_Feb2025.pdf — 'Chase credit card, balance $450'
+  Total: 3 bank statements, all from Laken's folder."
 
-❌ BAD — User: "What's in my tax folder?"
-  {"tool":"watchedFoldersDeepScan","args":{}}  ← wrong tool, use watchedFoldersAnalyze
-  "The folder has tax-related files."  ← too vague, no specifics
-  "I think there might be bank statements."  ← guessing, no data
+❌ BAD — User: "Summarize watched folders"
+  (dumps raw previews)
+  "Folder Laken has 14 files. File1: Bank of America statement Jan... File2: Court order..."
+  ← Too much raw listing, no synthesis, no grouping.
+
+❌ BAD — User: "Tell me about Laken"
+  (vague)
+  "Laken has some financial documents and legal papers."
+  ← No specifics, no profile structure, no source references.
+
+❌ BAD — User: "What's in the folders?"
+  (wrong tool call)
+  {"tool":"watchedFoldersDeepScan","args":{}}
+  ← You have the pre-scanned data. Use it. Don't call another tool.
 
 `
 
@@ -990,6 +1127,16 @@ function parseToolCall(text: string): { tool: string; args: any } | null {
 
     return null
   } catch { return null }
+}
+
+/**
+ * Strip any remaining {"tool":"xxx","args":...} patterns from AI response text
+ * before displaying to user. This is a safety net for any leaked tool-call JSON
+ * that wasn't caught by parseToolCall + re-prompt logic.
+ */
+function stripToolCallJSON(text: string): string {
+  // Remove patterns like {"tool":"xxx","args":{}} or {"tool":"xxx","args":{"key":"val"}}
+  return text.replace(/\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{[^}]*\}\s*\}/g, '').trim()
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -1757,10 +1904,12 @@ function App() {
     const needsContentAnalysis = watchedFolders.length > 0 && contentKeywords.some(kw => userTextLower.includes(kw))
 
     // Dynamic folderContext — adapts to content vs structure questions
+    // IMPORTANT: Since we auto-pre-scan data below, the AI should use the attached data,
+    // NOT attempt to call watchedFoldersAnalyze or watchedFoldersDeepScan again.
     const folderContext = watchedFolders.length > 0
       ? needsContentAnalysis
-        ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nDOCUMENT ANALYSIS MODE ACTIVE.\nThe pre-scanned data below already contains real folder contents and summaries.\nUse the "summary" and "fileList[].preview" fields to answer.\nList directories with 📁 and files with 📄. Include content excerpts from previews.\nNever invent filenames or content — only use what's in the pre-scanned data.`
-        : `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE.\nYour FIRST response MUST be exactly:\n  {"tool":"watchedFoldersDeepScan","args":{}}\n— no other text, no narration, no JSON response objects.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nAfter the [FOLDER TREE] arrives, ONLY mention names that appear in it. Never invent.`
+        ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nDOCUMENT ANALYSIS MODE ACTIVE.\n✅ DATA ALREADY SCANNED — watchedFoldersAnalyze() has been called and the full report is attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersAnalyze or watchedFoldersDeepScan.\n✅ Synthesize a narrative summary organized by topic or person profile.\nList directories with 📁 and files with 📄. Use preview excerpts sparingly — focus on synthesis.\nNever invent filenames or content — only use what's in the pre-scanned data.\n❌ Do NOT output {"tool":"watchedFoldersAnalyze","args":{}} — the data is already here.`
+        : `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE.\n✅ DATA ALREADY SCANNED — watchedFoldersDeepScan() has been called and the full folder tree is attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersDeepScan again.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nNever invent names — only mention names that appear in the data.\n❌ Do NOT output {"tool":"watchedFoldersDeepScan","args":{}} — the data is already here.`
       : ''
 
     const fullSystemPrompt = effectiveSystem + TOOL_SYSTEM_SUFFIX + healthContext + folderContext
@@ -1789,8 +1938,8 @@ function App() {
         msgsForAI.push({
           role: 'user',
           content: `[ATTACHED: REAL FOLDER DATA - obtained from ${usedToolName}() before your response]\n${JSON.stringify(preScannedData, null, 2)}\n\nINSTRUCTIONS FOR USING THIS DATA:\n${isContent
-            ? `1. This is ACTUAL filesystem data with REAL file contents. Do NOT invent or guess.\n2. Use "combinedSummary" and "reports[].summary" and "fileList[].preview" for content answers.\n3. List directories with 📁, files with 📄. Include short content snippets from previews.\n4. Organize your answer by folder, then by document type. Be specific: mention real file names and content.\n5. If a file's content shows "[unreadable]" or an error, say so honestly.\n6. If the user asks about something not found in the data, say: "I don't see that in the scanned folders."\n7. Never hallucinate filenames or content. Only use what's actually in the data above.`
-            : `1. This is the ACTUAL filesystem data. Do NOT invent or guess any file or folder names.\n2. When describing the structure, list DIRECTORIES FIRST with a "(dir)" suffix (e.g. "Taxes 2025/ (dir)").\n3. Only mention individual files if the user explicitly asks about files.\n4. If the user asks about "subfolders" or "folders", ONLY list directories — ignore files entirely.\n5. If a name the user mentioned is NOT in this data, say: "I don't see 'X' in the actual folder listing."\n6. Never invent filenames or paths.`
+            ? `1. This is ACTUAL filesystem data with REAL file contents. Do NOT invent or guess.\n2. MAIN DIRECTIVE: SYNTHESIZE — do NOT dump raw previews. Group by topic or create a Person Profile if a name was asked about.\n3. For person queries, compile: name, relationships, financials, legal matters, healthcare, education, key dates, source documents.\n4. For topic queries, group documents by sub-theme with specific numbers/dates/entities.\n5. List directories with 📁, files with 📄. Use short content excerpts only when they add value.\n6. If a file's content is garbled (OCR errors), say: "text quality is poor — likely scanned."\n7. If the user asks about something not found, say: "I don't see that in the scanned folders."\n8. Never output {"tool":"..."} as your final answer. The tool already ran. Answer in plain English.\n9. Never hallucinate filenames or content. Only use what's actually in the data above.`
+            : `1. This is the ACTUAL filesystem data. Do NOT invent or guess any file or folder names.\n2. When describing the structure, list DIRECTORIES FIRST with a "(dir)" suffix (e.g. "Taxes 2025/ (dir)").\n3. Only mention individual files if the user explicitly asks about files.\n4. If the user asks about "subfolders" or "folders", ONLY list directories — ignore files entirely.\n5. If a name the user mentioned is NOT in this data, say: "I don't see 'X' in the actual folder listing."\n6. Never invent filenames or paths.\n7. Never output {"tool":"..."} as your final answer. The data is already here — answer in plain English.`
           }`,
         })
       }
@@ -1827,6 +1976,25 @@ function App() {
           toolResultMsg,
         ])
 
+        // Step 4: Safety check — if re-prompted AI STILL outputs tool-call JSON, force natural language
+        const leakedCall = parseToolCall(aiText)
+        if (leakedCall) {
+          log(`LEAK_DETECTED: re-prompted AI output tool call "${leakedCall.tool}" instead of answering — force re-prompt`)
+          const forceNLMsg: Message = {
+            role: 'user',
+            content: `⚠️ CRITICAL: Your previous response was a tool call ({"tool":"${leakedCall.tool}","args":${JSON.stringify(leakedCall.args)}}). That is NOT allowed — the tool has ALREADY executed and the result was provided above.\n\nYou MUST answer the user's question in PLAIN ENGLISH with narrative synthesis. Do NOT output any JSON. Do NOT call any tool. Just answer naturally using the tool result data provided.`,
+          }
+          aiText = await callAI(fullSystemPrompt, [
+            ...messages,
+            { role: 'user', content: userText },
+            { role: 'assistant', content: aiText },
+            forceNLMsg,
+          ])
+          log(`LEAK_RECOVERED: ${aiText.slice(0, 60)}...`)
+        }
+
+        // Sanitize final response — strip any leaked tool-call JSON
+        aiText = stripToolCallJSON(aiText)
         // Replace the working indicator with the final response
         setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: aiText }])
         log(`AI_RESPONSE: ${aiText.slice(0, 60)}...`)
@@ -1848,6 +2016,8 @@ function App() {
           ])
         }
 
+        // Sanitize final response — strip any leaked tool-call JSON
+        aiText = stripToolCallJSON(aiText)
         setMessages(prev => [...prev, { role: 'assistant', content: aiText }])
         log(`AI_RESPONSE: ${aiText.slice(0, 60)}...`)
 
