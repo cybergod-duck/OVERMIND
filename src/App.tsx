@@ -657,6 +657,17 @@ const AGENT_TOOLS = {
       const cleanStr = segments.length > 0 ? segments[0] : t
       // 7. Truncate to maxLen clean chars at word boundary
       const singleLine = cleanStr.replace(/\n/g, ' ').replace(/  +/g, ' ').trim()
+      // 8. Readability check — detect garbled OCR / scanned garbage
+      const alpha = singleLine.replace(/[^a-zA-Z]/g, '').length
+      const totalNonSpace = singleLine.replace(/\s/g, '').length || 1
+      const alphaRatio = alpha / totalNonSpace
+      const words = singleLine.split(/\s+/).filter(w => w.length > 2)
+      const COMMON_EN = new Set(['the','and','for','are','but','not','you','all','can','had','her','was','one','our','out','has','have','been','this','that','with','from','they','will','would','could','should','their','them','when','what','which','each','about','into','over','such','than','then','these','those','also','after','still','between','might','more','very','just','because','some','being','your','does','done','well','most','where','here','there','only','other','another','while','during','without','within','through','before','after','account','number','total','balance','amount','date','name','address','phone','email','bank','state','county','health','medical','child','support','court','case','file','payment','order','income','tax','form','social','security','identification','driver','license','policy','claim','benefit','insurance','provider','group','member','subscriber','patient','employer','employee','wage','earnings','statement','document'])
+      const knownCount = words.filter(w => COMMON_EN.has(w.toLowerCase())).length
+      const knownRatio = words.length > 0 ? knownCount / words.length : 0
+      if (alphaRatio < 0.35 || (words.length > 3 && knownRatio < 0.03 && alphaRatio < 0.55)) {
+        return '[text quality is poor — likely scanned document with garbled OCR]'
+      }
       if (singleLine.length <= maxLen) return singleLine
       return singleLine.slice(0, singleLine.lastIndexOf(' ', maxLen)) + '...'
     }
@@ -782,24 +793,49 @@ const AGENT_TOOLS = {
 
       const summaryLines: string[] = []
 
-      if (sortedTopics.length > 0) {
-        summaryLines.push(`📊 Documents by Topic:`)
-        for (const t of sortedTopics.slice(0, 8)) {
+      // ── KEY FINDINGS section ──────────────────────────────────────
+      const nonGeneral = sortedTopics.filter(t => !t.topic.includes('General'))
+      const generalCount = sortedTopics.find(t => t.topic.includes('General'))?.count ?? 0
+      if (nonGeneral.length > 0) {
+        summaryLines.push(`🔑 Key Findings:`)
+        for (const t of nonGeneral.slice(0, 5)) {
           const fileSample = t.files.length > 0 ? ` (e.g. ${t.files.join(', ')})` : ''
           summaryLines.push(`  ${t.topic}: ${t.count} file(s)${fileSample}`)
         }
-        if (sortedTopics.length > 8) summaryLines.push(`  ... and ${sortedTopics.length - 8} more topics`)
+        if (nonGeneral.length > 5) summaryLines.push(`  ... and ${nonGeneral.length - 5} more topics`)
+        if (generalCount > 0) {
+          summaryLines.push(`  📄 General / Unclassified: ${generalCount} file(s) — these may be scanned PDFs with low text quality`)
+        }
+        summaryLines.push('')
       }
 
-      // Detail listing with preview excerpts
+      // ── TOPIC BREAKDOWN section ──────────────────────────────────
+      if (sortedTopics.length > 0) {
+        summaryLines.push(`📊 Full Topic Breakdown:`)
+        for (const t of sortedTopics.slice(0, 10)) {
+          const fileSample = t.files.length > 0 ? ` (e.g. ${t.files.join(', ')})` : ''
+          summaryLines.push(`  ${t.topic}: ${t.count} file(s)${fileSample}`)
+        }
+        if (sortedTopics.length > 10) summaryLines.push(`  ... and ${sortedTopics.length - 10} more topics`)
+      }
+
+      // ── DETAILED FILE PREVIEWS (compact) ────────────────────────
       if (fileList.length > 0) {
         summaryLines.push(``)
-        summaryLines.push(`📄 File Previews:`)
-        for (const f of fileList.slice(0, 15)) {
-          const preview = f.preview.length > 200 ? f.preview.slice(0, 200) + '...' : f.preview
-          summaryLines.push(`  • ${f.name}: ${preview}`)
+        summaryLines.push(`📄 Files with Content:`)
+        for (const f of fileList.slice(0, 12)) {
+          const preview = f.preview.length > 180 ? f.preview.slice(0, 180) + '...' : f.preview
+          const tags = f.topics && f.topics.length > 0 ? ` [${f.topics.join(', ')}]` : ''
+          summaryLines.push(`  • ${f.name}: ${preview}${tags}`)
         }
-        if (fileList.length > 15) summaryLines.push(`  ... and ${fileList.length - 15} more files`)
+        if (fileList.length > 12) summaryLines.push(`  ... and ${fileList.length - 12} more files`)
+      }
+
+      // ── DATA QUALITY NOTES ───────────────────────────────────────
+      const garbledCount = fileList.filter(f => f.preview.includes('garbled OCR')).length
+      if (garbledCount > 0) {
+        summaryLines.push(``)
+        summaryLines.push(`⚠ Note: ${garbledCount} file(s) had unreadable text (likely scanned documents with poor OCR).`)
       }
 
       reports.push({
@@ -938,90 +974,120 @@ SUMMARY: Question about folders → {"tool":"watchedFoldersDeepScan","args":{}}
 ║              DOCUMENT ANALYSIS MODE                         ║
 ╚══════════════════════════════════════════════════════════════╝
 
+You are a highly intelligent personal assistant analyzing real filesystem data.
+After getting tool results, ALWAYS synthesize the information into clear,
+concise, human-readable insights. Never just list files or quote raw text.
+Think step-by-step, extract key facts, then deliver a polished answer.
+
 When the user asks about CONTENT, SUMMARIES, or INSIGHTS from watched folders
 (e.g. "summarize everything", "what documents are in the Finance folder",
 "find bank statements", "what does this PDF say", "tell me about [person]"):
 
-Step 1 — Use the PRE-SCANNED data (already attached)
+=== ⚠️ CRITICAL: You MUST follow ALL 6 steps below. No exceptions. ===
+
+Step 0 — Adopt the "intelligent assistant" mindset
+  • You are the user's personal research assistant. Your job is to READ the data,
+    UNDERSTAND what it means, and EXPLAIN it clearly.
+  • The user does NOT want to see raw data dumps. They want INSIGHTS.
+  • Before writing anything, ask yourself: "What would a smart assistant tell me?"
+  • If the answer is "just list the files", you are doing it wrong. Go deeper.
+
+Step 1 — Use the PRE-SCANNED data (already attached below)
   The system already ran watchedFoldersAnalyze() before your response.
-  The [ATTACHED: REAL FOLDER DATA] message contains the full report with:
-  • reports[].topTopics — documents grouped by topic (Banking, Legal, Healthcare, etc.)
-  • reports[].fileList[].preview — cleaned 250-char previews per file
-  • reports[].combinedSummary — high-level overview
-  DO NOT call watchedFoldersAnalyze again — the data is already here.
+  The [ATTACHED DATA] message contains the full report with:
+  • topTopics — documents grouped by topic (Banking, Legal, Healthcare, etc.)
+  • fileList[].preview — cleaned 250-char previews per file
+  • combinedSummary — high-level overview
+  DO NOT call watchedFoldersAnalyze again — the data is ALREADY here.
 
-Step 2 — SYNTHESIZE, do NOT dump raw data
-  ❌ BAD: Listing every file with its raw preview text
-  ❌ BAD: "The report shows 12 files. File1: ... File2: ... File3: ..."
-  ✅ GOOD: Organize by TOPIC or THEME. Create a coherent narrative.
-  ✅ GOOD: For person queries, compile a "Person Profile" with key facts.
+Step 2 — SYNTHESIZE. DO NOT dump raw data. EVER.
+  ❌ FORBIDDEN: Listing every file with its raw preview text.
+    "File1: Bank of America... File2: Court order... File3: Insurance..."
+    ← This is a raw dump. The user can read the file list themselves.
+  ❌ FORBIDDEN: "The report shows 12 files..." ← useless robot response.
+  ✅ REQUIRED: Organize by TOPIC or THEME into a coherent narrative.
+    "🏦 Banking: 5 statements from Bank of America (Jan-Mar 2025),
+     showing consistent $2,000-$2,500 balance."
+  ✅ REQUIRED: For person queries, compile a structured Person Profile.
+  ✅ REQUIRED: For topic queries, group by sub-theme with specifics.
 
-Step 3 — For queries about a PERSON (e.g. "John Smith", "a person mentioned in the files"):
-  Create a structured Person Profile Summary with sections:
-  • Full Name / Identifiers
-  • Relationships (children, family members mentioned)
-  • Financials (bank accounts, income sources, child support amounts)
-  • Legal Matters (court cases, filings, custody orders)
-  • Healthcare / Education / Employment (as relevant)
-  • Key Dates (birth dates, filing deadlines, court dates)
-  • Source Documents (which files contain which facts)
+Step 3 — For queries about a PERSON (e.g. "John Smith", "a person mentioned in files"):
+  IMMEDIATELY output a structured Person Profile Summary with ALL of:
+  👤 Full Name / Identifiers — full name, aliases, SSN (if present), DOB
+  👨‍👩‍👧 Relationships — children, spouse, family members, any names mentioned
+  💰 Financials — bank accounts, account numbers, balances, income, child support
+  ⚖️ Legal Matters — court cases, case numbers, filings, orders, attorney names
+  🏥 Healthcare — insurance provider, policy numbers, medical info, coverage details
+  📅 Key Dates — birth dates, filing deadlines, court dates, statement periods
+  📁 Source Documents — EXACT filenames and paths for EACH fact
 
-Step 4 — For queries about a TOPIC (e.g. "taxes", "bank statements"):
+  ⚡ SYNTHESIS RULE: Do NOT say "the files mention..." or "according to the previews..."
+  Instead, state facts directly: "Bank of America account ending in 4832, balance $2,340."
+  Use the "Source:" attribution at the end of each line, like:
+    "🏦 Bank of America account ending in 4832 — $2,340 balance (as of Jan 2025)
+     Source: 📁 Personal/Finance/BofA_Jan2025.pdf"
+
+Step 4 — For queries about a TOPIC (e.g. "taxes", "bank statements", "legal"):
   • Group documents by sub-topic within the theme
-  • Extract specific numbers, dates, entities from previews
-  • Summarize totals and key findings across documents
-  • Mention which folder each document lives in
+  • Extract specific NUMBERS, DATES, ENTITIES from previews
+  • Summarize totals and key findings across all documents
+  • Say which folder each document lives in
+  • If you find dollar amounts, SUM them where appropriate
 
-Step 5 — Write in clean, natural language with selective excerpts
-  • Use 📁 for folders, 📄 for files
-  • Include brief content excerpts only when they add value
-  • Never dump 10+ preview lines in a row — synthesize
-  • If OCR text is garbled, say "text quality is poor — likely scanned"
-  • Never guess or hallucinate — if data is absent, say "not found in scanned folders"
+Step 5 — Write in clean, natural, human language
+  • Use 📁 for folders, 📄 for files — but SPARINGLY. Not every line needs an icon.
+  • Include brief content excerpts ONLY when they add unique value
+  • SYNTHESIS > LISTING. 2 sentences of insight > 10 lines of preview text.
+  • If OCR text is garbled: say "text quality is poor — likely scanned" (ONCE, not per file)
+  • If something isn't in the data: say "not found in scanned folders" — NEVER guess
+  • Think like a detective: what patterns emerge? what's notable? what's missing?
 
 Step 6 — Never output raw tool-call JSON as your answer
   If you see {"tool":"...","args":{}} in your own output — STOP.
   That is a TOOL CALL, not a response. The tool already ran.
-  Answer in PLAIN ENGLISH with narrative synthesis.
+  Answer in PLAIN ENGLISH with narrative synthesis. PERIOD.
 
 === GOOD RESPONSE EXAMPLES ===
 
 ✅ GOOD — User: "What can you tell me about [person]?"
-  (uses pre-scanned data)
-  "📋 Person Profile: [Name from data]
-  👶 Child Support: $450/month ordered in case CS-2024-1234.
-    Source: Child Support/Order_2024.pdf
-  🏦 Banking: Bank of America account ending in 4832.
-    Last statement (Jan 2025) showed $2,340 balance.
-    Source: Finance/BofA_Jan2025.pdf
-  🏥 Healthcare: Cigna PPO plan, $30 copay, dental included.
+  "📋 Person Profile: [Name]
+  👤 Full Name: [Name]
+  👨‍👩‍👧 Relationships: Child named [name] mentioned in child support docs
+  💰 Financials:
+    • Bank of America checking ****4832 — $2,340 balance (Jan 2025)
+      Source: Finance/BofA_Jan2025.pdf
+    • Chase credit card ****9012 — $450 balance (Feb 2025)
+      Source: Finance/Chase_Feb2025.pdf
+  ⚖️ Legal:
+    • Child support order CS-2024-1234 — $450/month
+      Source: Legal/Child_Support_Order_2024.pdf
+    • Custody filing FC-2024-567 (Mar 2024)
+      Source: Legal/Custody_Filing.pdf
+  🏥 Healthcare: Cigna PPO plan, $30 copay, dental included
     Source: Medical/Insurance_2025.pdf
-  ⚖️ Legal: Custody filing from March 2024 (Family Court #FC-2024-567).
-    Source: Legal/Custody_Filing.pdf
-  Note: No tax documents or employment records found in scanned folders."
+  📅 Key Dates: Jan 2025 (BofA statement), Mar 2024 (custody filing)
+  📁 Note: No tax returns or employment records found in scanned folders."
 
 ✅ GOOD — User: "Summarize everything in my watched folders"
-  (uses pre-scanned data)
   "📊 Watched Folders Overview
   Total: 2 folders, 24 files across 7 topics
 
   📁 Personal/
     🏦 Banking (5 files): Bank of America statements from Jan-Mar 2025,
-      Chase credit card summary
-    👶 Child Support (3 files): $450/month order + payment history
-    🏥 Healthcare (4 files): Insurance card, provider directory
-    ⚖️ Legal (2 files): Custody filing, court notice
+      Chase credit card summary — balances range $1,800-$2,500
+    👶 Child Support (3 files): $450/month order + 6 months payment history
+    🏥 Healthcare (4 files): Cigna PPO insurance, provider directory
+    ⚖️ Legal (2 files): Custody filing + court notice from Family Court
     🎓 Education (1 file): University transcript
 
   📁 Taxes 2025/
     💰 Taxes (5 files): 2024 tax return (refund $1,240), W-2, 1099-INT
     🏠 Real Estate (1 file): Property tax assessment
 
-  Key financial data: ~$3,200/month net income, $450 child support paid,
-  $2,340 bank balance, $1,240 tax refund expected."
+  Key financial picture: ~$3,200/month net income, $450 child support paid,
+  $2,340 bank balance across 2 accounts, $1,240 tax refund expected."
 
 ✅ GOOD — User: "Find all bank statements"
-  (uses pre-scanned data)
   "🏦 Bank Statements found:
   📁 Personal/Finance/
     📄 BofA_Jan2025.pdf — 'Bank of America, checking 4832, $2,340 balance'
@@ -1030,19 +1096,18 @@ Step 6 — Never output raw tool-call JSON as your answer
   Total: 3 bank statements, all from the Personal folder."
 
 ❌ BAD — User: "Summarize watched folders"
-  (dumps raw previews)
-  "Personal folder has 14 files. File1: Bank of America statement Jan... File2: Court order..."
-  ← Too much raw listing, no synthesis, no grouping.
+  "The report shows the Personal folder. It has 14 files. File1: Bank of America statement...
+  File2: Court order... File3: Insurance... File4: Child support..."
+  ← FORBIDDEN: raw listing. Synthesize by topic with key findings.
 
 ❌ BAD — User: "Tell me about [person]"
-  (vague)
-  "They have some financial documents and legal papers."
-  ← No specifics, no profile structure, no source references.
+  "According to the data, [person] has some financial documents and legal papers.
+  The previews mention Bank of America and a court case."
+  ← FORBIDDEN: too vague. Must be a structured Person Profile with specifics.
 
 ❌ BAD — User: "What's in the folders?"
-  (wrong tool call)
   {"tool":"watchedFoldersDeepScan","args":{}}
-  ← You have the pre-scanned data. Use it. Don't call another tool.
+  ← FORBIDDEN: data is already attached. Use it. Don't call another tool.
 
 `
 
@@ -1910,7 +1975,7 @@ function App() {
     // NOT attempt to call watchedFoldersAnalyze or watchedFoldersDeepScan again.
     const folderContext = watchedFolders.length > 0
       ? needsContentAnalysis
-        ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nDOCUMENT ANALYSIS MODE ACTIVE.\n✅ DATA ALREADY SCANNED — watchedFoldersAnalyze() has been called and the full report is attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersAnalyze or watchedFoldersDeepScan.\n✅ Synthesize a narrative summary organized by topic or person profile.\nList directories with 📁 and files with 📄. Use preview excerpts sparingly — focus on synthesis.\nNever invent filenames or content — only use what's in the pre-scanned data.\n❌ Do NOT output {"tool":"watchedFoldersAnalyze","args":{}} — the data is already here.`
+        ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nDOCUMENT ANALYSIS MODE ACTIVE.\n⚠️ YOU ARE AN INTELLIGENT PERSONAL ASSISTANT. SYNTHESIZE. DO NOT DUMP RAW DATA.\n✅ DATA ALREADY SCANNED — watchedFoldersAnalyze() has been called and attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersAnalyze or watchedFoldersDeepScan.\n✅ SYNTHESIZE a narrative organized by topic or person profile.\n✅ Focus on KEY FINDINGS and INSIGHTS, not file lists.\n✅ Use preview excerpts SPARINGLY — only when they add unique value.\n❌ DO NOT output {"tool":"..."} — the data is already here. Answer in plain English.\n❌ DO NOT dump 10+ preview lines in a row. Synthesize.`
         : `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nSTRICT FILESYSTEM MODE ACTIVE.\n✅ DATA ALREADY SCANNED — watchedFoldersDeepScan() has been called and the full folder tree is attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersDeepScan again.\nOnly directories listed with (dir) suffix; de-emphasize files unless asked.\nNever invent names — only mention names that appear in the data.\n❌ Do NOT output {"tool":"watchedFoldersDeepScan","args":{}} — the data is already here.`
       : ''
 
@@ -1939,8 +2004,8 @@ function App() {
         const isContent = usedToolName === 'watchedFoldersAnalyze'
         msgsForAI.push({
           role: 'user',
-          content: `⚠️ YOU MUST FOLLOW THESE DIRECTIONS. DO NOT QUOTE THEM. USE THE DATA BELOW TO ANSWER.\n\n${isContent
-            ? `DIRECTIVES (content analysis):\n- THIS IS REAL FILESYSTEM DATA — never invent or guess.\n- SYNTHESIZE a narrative answer. DO NOT dump raw previews.\n- If user asked about a PERSON: CREATE a Person Profile with name, relationships, financials, legal matters, healthcare, education, key dates, source documents.\n- If user asked about a TOPIC: group documents by sub-theme with specific numbers/dates/entities.\n- Use 📁 for directories, 📄 for files. Only include preview excerpts when they add unique value.\n- If preview text is garbled (OCR errors), say: "text quality is poor — likely scanned."\n- If something isn't in the data, say: "I don't see that in the scanned folders."\n- NEVER output {"tool":"..."} — the tool already ran. Answer in plain English.\n- NEVER hallucinate filenames or content.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
+          content: `⚠️ CRITICAL: YOU MUST FOLLOW THESE DIRECTIONS. DO NOT QUOTE THEM. DO NOT DUMP RAW DATA. USE THE DATA BELOW TO ANSWER INTELLIGENTLY.\n\n${isContent
+            ? `⚠️ CONTENT ANALYSIS MODE — SYNTHESIS REQUIRED:\n- 🚫 NEVER dump raw preview text or list files one by one. That is USELESS.\n- ✅ You are a SMART ASSISTANT. Synthesize key findings organized by topic.\n- 🔍 If user asked about a PERSON: IMMEDIATELY create a structured Person Profile with:\n    👤 Full name, 👨‍👩‍👧 Relationships, 💰 Financials (bank names, balances, income),\n    ⚖️ Legal matters (case numbers, court names, filings), 🏥 Healthcare,\n    📅 Key dates, 📁 Source documents (exact filenames).\n    State facts directly: "Bank of America account ****4832 — $2,340"\n    NOT "the preview mentions..." — just state it with Source: at the end.\n- 📊 If user asked about a TOPIC: group by sub-theme with specific numbers/dates/entities.\n- 📁 Use 📁/📄 sparingly. Only include preview excerpts when they add unique value.\n- ⚠️ If preview text is garbled (flagged as unreadable): say "text quality is poor — likely scanned" ONCE only.\n- ❌ If something isn't in the data: say "not found in scanned folders" — NEVER guess.\n- 🚫 NEVER output {"tool":"..."} — the tool already ran. Answer in PLAIN ENGLISH.\n- 🚫 NEVER hallucinate filenames or content.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
             : `DIRECTIVES (structure analysis):\n- THIS IS THE ACTUAL FILESYSTEM — never invent names.\n- List DIRECTORIES FIRST with "(dir)" suffix.\n- Only mention files if user explicitly asks about them.\n- If user asks about folders/subfolders: ONLY list directories, ignore files.\n- If a name isn't in the data: "I don't see 'X' in the actual folder listing."\n- NEVER output {"tool":"..."} — data is already here. Answer in plain English.\n\n${'─'.repeat(60)}\n[ATTACHED DATA from ${usedToolName}()]:\n${JSON.stringify(preScannedData, null, 2)}`
           }`,
         })
