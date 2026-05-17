@@ -15,8 +15,6 @@ import {
 
 // ── Privacy Sentinel types ────────────────────────────────────
 
-// ── Privacy Sentinel types ──────────────────────────────────────
-
 type RemediationAction = {
   id: string
   label: string
@@ -922,57 +920,28 @@ const TOOL_SYSTEM_SUFFIX = `
 ║         DOCTOR TOOLS QUICK MAP  (HIGHEST PRIORITY)          ║
 ╚══════════════════════════════════════════════════════════════╝
 
-If the user says anything matching these phrases, IMMEDIATELY call the corresponding tool.
-NEVER give manual Windows instructions. NEVER explain how to clean temp files manually.
-ALWAYS call the tool — it handles everything.
+If the user says ANYTHING like:
+  "clean temporary files" / "clean temp" / "cleanup temp" / "clear temp files" / "temp cleanup" / "clean my temp" / "delete temp files"
+→ IMMEDIATELY respond with EXACTLY this JSON and NOTHING ELSE:
+  {"tool":"doctorCleanTemp","args":{}}
 
-  "clean temporary files" / "clean temp" / "cleanup temp" / "clear temp files" / "temp cleanup"
-  → {"tool":"doctorCleanTemp","args":{}}
+The same strict rule applies to all other doctor tools.
 
-  "find large files" / "large files" / "big files" / "what's taking up space" / "disk hogs"
-  → {"tool":"doctorFindLargeFiles","args":{}}
+This is the ONLY acceptable response for those phrases. No explanation, no manual instructions, no Windows guide.
 
-  "find duplicates" / "duplicates" / "duplicate files" / "same files" / "identical files"
-  → {"tool":"doctorFindDuplicates","args":{}}
+Few-shot:
+User: clean temporary files
+Assistant: {"tool":"doctorCleanTemp","args":{}}
 
-  "disk space" / "free space" / "disk report" / "how much space" / "storage report" / "drive space"
-  → {"tool":"doctorDiskSpaceReport","args":{}}
+User: find large files
+Assistant: {"tool":"doctorFindLargeFiles","args":{}}
 
-  "backup" / "backup folders" / "backup watched" / "create backup" / "zip my files" / "backup now"
-  → {"tool":"doctorBackupFolders","args":{}}
+User: backup my watched folders
+Assistant: {"tool":"doctorBackupFolders","args":{}}
 
-  "deep clean" / "full clean" / "deep system clean" / "clean everything" / "system cleanup"
-  → {"tool":"doctorDeepClean","args":{}}
+RULE: If the user message contains any of the above phrases, your ENTIRE response MUST be the JSON tool call. Nothing else.
 
-File operation quick map:
-  "move file" / "move (path)" → {"tool":"watchedFoldersMoveFile","args":{"sourcePath":"...","targetPath":"..."}}
-  "rename file" / "rename (path)" → {"tool":"watchedFoldersRenameFile","args":{"filePath":"...","newName":"..."}}
-  "delete file" / "delete (path)" / "remove file" → {"tool":"watchedFoldersDeleteFile","args":{"filePath":"..."}}
-  "create folder" / "new folder" / "make directory" → {"tool":"watchedFoldersCreateFolder","args":{"folderPath":"..."}}
-  "organize" / "auto-organize" / "sort files" / "organize folder" → {"tool":"watchedFoldersOrganizeSmart","args":{"folderPath":"..."}}
-
-Few-shot examples (respond with EXACTLY this format — no extra text):
-  User: "clean temporary files"
-  Assistant: {"tool":"doctorCleanTemp","args":{}}
-
-  User: "find large files over 200MB"
-  Assistant: {"tool":"doctorFindLargeFiles","args":{"minMB":200}}
-
-  User: "backup my watched folders"
-  Assistant: {"tool":"doctorBackupFolders","args":{}}
-
-  User: "find duplicates in my folders"
-  Assistant: {"tool":"doctorFindDuplicates","args":{}}
-
-  User: "what's my disk space situation"
-  Assistant: {"tool":"doctorDiskSpaceReport","args":{}}
-
-  User: "organize my Downloads folder"
-  Assistant: {"tool":"watchedFoldersOrganizeSmart","args":{"folderPath":"C:\\Users\\...\\Downloads"}}
-
-REMEMBER: These are TOOLS. Do NOT explain what they do. Do NOT give manual instructions.
-Just CALL THE TOOL. The user will see the result directly.
-
+` + `
 ╔══════════════════════════════════════════════════════════════╗
 ║              TOOL CALLING — ABSOLUTE RULES                  ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -981,64 +950,45 @@ RULE 1 — Your ENTIRE response MUST be EXACTLY one of these:
   {"tool":"watchedFoldersDeepScan","args":{}}
   {"tool":"folderRead","args":{"path":"..."}}
   {"tool":"folderList","args":{"path":"..."}}
-  ...or another tool from the list below.
+  {"tool":"doctorCleanTemp","args":{}}
+  {"tool":"doctorFindLargeFiles","args":{}}
+  {"tool":"doctorFindDuplicates","args":{}}
+  {"tool":"doctorDiskSpaceReport","args":{}}
+  {"tool":"doctorBackupFolders","args":{}}
+  {"tool":"doctorDeepClean","args":{}}
+  or any other tool from AGENT_TOOLS.
 
 RULE 2 — NEVER output any other JSON format. In particular, these are FORBIDDEN:
   ❌ {"message":"...","files":[...]}  ← DO NOT invent response JSON
-  ❌ {"result":"...","data":[...]}    ← DO NOT invent response JSON
-  ❌ {"status":"ok","folders":[...]}  ← DO NOT invent response JSON
-  ❌ Any JSON object without a "tool" key
 
 RULE 3 — NEVER wrap the JSON in backticks, markdown, or code fences.
-  ❌ \`\`\`json{"tool":"..."}\`\`\`  ← FORBIDDEN
-  ❌ \`{"tool":"..."}\`  ← FORBIDDEN
 
 RULE 4 — NEVER narrate, explain, or describe what you're about to do.
-  ❌ "I will call watchedFoldersDeepScan()..."  ← FORBIDDEN
-  ❌ "Let me scan the folders to find out..."   ← FORBIDDEN
-  ❌ "Here is what I found: ..."                 ← FORBIDDEN (save this for after)
 
 CORRECT examples (pure JSON, no extra text):
-  ✅ {"tool":"watchedFoldersDeepScan","args":{}}
-  ✅ {"tool":"folderRead","args":{"path":"C:\\Users\\...\\notes.txt"}}
-  ✅ {"tool":"runCommand","args":{"cmd":"dir"}}
+  ✅ {"tool":"doctorCleanTemp","args":{}}
 
 INCORRECT examples (will be IGNORED by the system):
-  ❌ {"message":"Here are the files:","files":[{"name":"a.txt"}]}
-  ❌ I think the answer is {"tool":"watchedFoldersDeepScan","args":{}}
-  ❌ \`\`\`{"tool":"watchedFoldersDeepScan"}\`\`\`
+  ❌ "I can't clean temporary files..."
+  ❌ "Here's how to clean temp files manually..."
 
-CRITICAL: If you want to answer in natural language, use PLAIN TEXT only.
-If you output a JSON object, it MUST be a tool call and NOTHING else.
+CRITICAL: For the phrases in the DOCTOR TOOLS QUICK MAP, you MUST output the JSON tool call. No exceptions.
 
+` + `
 Available tools:
-- ollamaPull — args: { model: string }
-- ollamaList — args: {}
-- getHealth — args: {}
-- killPort — args: { port: number }
-- writeEnv — args: { entries: Record<string,string> }
-- runCommand — args: { cmd: string }
-- folderList — args: { path: string } — list directory contents
-- folderRead — args: { path: string } — read a text file
-- runPrivacyScan — args: {} — run a full privacy scan
-- privacyFix — args: { actionId: string } — execute remediation action
-- watchedFoldersList — args: {} — returns watched folders as JSON
-- watchedFoldersDescribe — args: {} — returns watched folders and their immediate contents as formatted text (top level only, not recursive)
-- watchedFoldersDeepScan — args: {} — recursively walks ALL watched folders and subfolders (max depth 5), returns a full [FOLDER TREE] with every file and subdirectory listed. Use this for ANY question about subfolders, file structure, directory contents, or "what's inside".
-- watchedFoldersAnalyze — args: { folderPath?: string; maxDepth?: number; includeFileTypes?: string[] } — POWERFUL content-aware analyzer. Recursively walks folders, reads PDFs and text files to extract actual content, and returns a structured report with: folder tree (📁 icons), file previews, and a content summary. Use this for questions like "summarize everything about taxes", "what documents are in the Finance folder", "find bank statements". It reads real file contents, not just names.
-- browserAction — args: { action: string; selector?: string; text?: string; scrollY?: number; url?: string }
-- watchedFoldersMoveFile — args: { sourcePath: string; targetPath: string } — move/rename a file to a new location
-- watchedFoldersRenameFile — args: { filePath: string; newName: string } — rename a file in-place
-- watchedFoldersDeleteFile — args: { filePath: string } — PERMANENTLY delete a file (bypasses Recycle Bin). ⚠️ Requires user confirmation.
-- watchedFoldersCreateFolder — args: { folderPath: string } — create a new folder (including parent directories)
-- watchedFoldersOrganizeSmart — args: { folderPath: string } — auto-organize files into subfolders (Banking, Legal, Medical, Taxes, etc.) based on content. ⚠️ Requires user confirmation.
-- doctorCleanTemp — args: {} — clean Windows temporary files (Temp, Prefetch files older than 24h)
-- doctorFindLargeFiles — args: { folderPath?: string; minMB?: number } — find files larger than minMB (default 100MB)
-- doctorFindDuplicates — args: { folderPath?: string } — find duplicate files across watched folders using content hashing
-- doctorDiskSpaceReport — args: {} — report disk space usage and suggestions to free space
-- doctorBackupFolders — args: {} — backup all watched folders to a Desktop zip archive
-- doctorDeepClean — args: {} — aggressive system cleanup (temp files, recycle bin, prefetch). ⚠️ Requires user confirmation.
+- doctorCleanTemp — args: {} — clean Windows temporary files
+- doctorFindLargeFiles — args: { folderPath?: string; minMB?: number }
+- doctorFindDuplicates — args: { folderPath?: string }
+- doctorDiskSpaceReport — args: {}
+- doctorBackupFolders — args: {}
+- doctorDeepClean — args: {}
+- watchedFoldersMoveFile — args: { sourcePath: string; targetPath: string }
+- watchedFoldersRenameFile — args: { filePath: string; newName: string }
+- watchedFoldersDeleteFile — args: { filePath: string }
+- watchedFoldersCreateFolder — args: { folderPath: string }
+- watchedFoldersOrganizeSmart — args: { folderPath: string }
 
+` + `
 ╔══════════════════════════════════════════════════════════════╗
 ║              FILE ORGANIZATION MODE — SAFETY WARNINGS       ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -1092,6 +1042,7 @@ Available tools:
   modify the user's filesystem. Every destructive action must be explicitly
   confirmed by the user. When in doubt, DO NOT ACT — ASK FIRST.
 
+` + `
 ╔══════════════════════════════════════════════════════════════╗
 ║              STRICT FILESYSTEM MODE                         ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -1312,7 +1263,6 @@ function parseToolTokens(text: string): ToolToken[] {
 function parseToolCall(text: string): { tool: string; args: any } | null {
   try {
     // ── Strategy 1: Strip markdown code fences ──
-    // Handle ```json ... ```, ` ... `, or any backtick-wrapped JSON
     let cleaned = text.replace(/```[a-z]*\n?/gi, '').replace(/`/g, '').trim()
 
     // ── Strategy 2: Brace-depth scanner (handles text before/after JSON) ──
@@ -1337,8 +1287,6 @@ function parseToolCall(text: string): { tool: string; args: any } | null {
     }
 
     // ── Strategy 3: Regex fallback ──
-    // If brace-depth failed, try a targeted regex that finds {"tool":"xxx","args":...
-    // even when embedded in surrounding text that might confuse the scanner.
     const toolCallRegex = /\{"tool"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[^}]*\})\s*\}/g
     let match: RegExpExecArray | null
     while ((match = toolCallRegex.exec(cleaned)) !== null) {
@@ -2096,6 +2044,24 @@ function App() {
     setLoading(true)
     log(`MSG_SENT → ${selectedModel}`)
 
+    // ── FORCED FALLBACK FOR DOCTOR TOOLS ───────────────────────
+    const userTextLower = userText.toLowerCase().trim()
+    if (userTextLower.includes('clean temporary files') || userTextLower.includes('clean temp') || userTextLower.includes('cleanup temp') || userTextLower.includes('clear temp')) {
+      setMessages(prev => [...prev, { role: 'agent', content: '⚙ Executing doctorCleanTemp...' }])
+      try {
+        const result = await AGENT_TOOLS.doctorCleanTemp()
+        const resultMsg = `[TOOL RESULT: doctorCleanTemp] Removed ${result.removed || 0} files, freed ${result.freedMB || 0}MB`
+        setMessages(prev => [...prev, { role: 'system', content: resultMsg }])
+        log(resultMsg)
+        setLoading(false)
+        return
+      } catch (err: any) {
+        setMessages(prev => [...prev, { role: 'error', content: `Tool error: ${err.message}` }])
+        setLoading(false)
+        return
+      }
+    }
+
     const effectiveSystem = customPrompt
       ? `${customPrompt}\n\n---\n\n${SYSTEM_PROMPT}`
       : SYSTEM_PROMPT
@@ -2104,7 +2070,6 @@ function App() {
       : ''
 
     // Pre-scan detection must happen BEFORE folderContext so we can make it dynamic
-    const userTextLower = userText.toLowerCase()
     const folderLabels = watchedFolders.map(f => ({
       path: f,
       label: f.split('\\').pop()?.split('/').pop() || f,
@@ -2154,8 +2119,6 @@ function App() {
     const needsContentAnalysis = watchedFolders.length > 0 && contentKeywords.some(kw => userTextLower.includes(kw))
 
     // Dynamic folderContext — adapts to content vs structure questions
-    // IMPORTANT: Since we auto-pre-scan data below, the AI should use the attached data,
-    // NOT attempt to call watchedFoldersAnalyze or watchedFoldersDeepScan again.
     const folderContext = watchedFolders.length > 0
       ? needsContentAnalysis
         ? `\n\n[WATCHED FOLDERS]\nThe user has granted read access to:\n${folderLabels.map(f => `  - ${f.path} (label: "${f.label}")`).join('\n')}\n\nDOCUMENT ANALYSIS MODE ACTIVE.\n⚠️ YOU ARE AN INTELLIGENT PERSONAL ASSISTANT. SYNTHESIZE. DO NOT DUMP RAW DATA.\n✅ DATA ALREADY SCANNED — watchedFoldersAnalyze() has been called and attached below.\n✅ USE the attached data directly — do NOT call watchedFoldersAnalyze or watchedFoldersDeepScan.\n✅ SYNTHESIZE a narrative organized by topic or person profile.\n✅ Focus on KEY FINDINGS and INSIGHTS, not file lists.\n✅ Use preview excerpts SPARINGLY — only when they add unique value.\n❌ DO NOT output {"tool":"..."} — the data is already here. Answer in plain English.\n❌ DO NOT dump 10+ preview lines in a row. Synthesize.`
