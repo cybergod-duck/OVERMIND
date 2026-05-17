@@ -872,15 +872,6 @@ function App() {
 
   // ── Vault ──────────────────────────────────────────────────
 
-  // Auto-detect provider from label using KEY_PATTERNS
-  const detectedProvider = (() => {
-    if (newSecret.type !== 'api_key') return undefined
-    for (const [pattern, p] of KEY_PATTERNS) {
-      if (p && pattern.test(newSecret.label)) return p
-    }
-    return undefined
-  })()
-
   const addSecret = () => {
     if (!newSecret.label || !newSecret.value) return
     // Auto-detect provider from label for API keys if not manually set
@@ -1939,31 +1930,6 @@ function App() {
               }
               rows={3}
             />
-            {/* Provider — auto-detected for API keys, manual fallback, hidden for non-credentials */}
-            {newSecret.type === 'api_key' ? (
-              detectedProvider ? (
-                <div className="vault-provider-detect">
-                  <span className="vault-provider-tag">
-                    ✓ {PROVIDER_CONFIG[detectedProvider]?.label || detectedProvider.toUpperCase()}
-                  </span>
-                </div>
-              ) : (
-                <select
-                  className="vault-input"
-                  value={newSecret.provider}
-                  onChange={e =>
-                    setNewSecret({ ...newSecret, provider: e.target.value })
-                  }
-                >
-                  <option value="">— select provider —</option>
-                  {Object.entries(PROVIDER_CONFIG).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-              )
-            ) : null}
             <button className="btn-add" onClick={addSecret}>
               + ADD SECRET
             </button>
