@@ -459,13 +459,16 @@ const KEY_PATTERNS: [RegExp, string | undefined, string][] = [
 function generateLabel(key: string): string {
   // Strip common suffixes before display
   const cleaned = key
-    .replace(/_API_KEY$/i, '')
-    .replace(/_KEY$/i, '')
-    .replace(/_SECRET$/i, '')
-    .replace(/_TOKEN$/i, '')
-    .replace(/_ACCESS_KEY$/i, '')
+    .replace(/_?API_?KEY$/i, '')
+    .replace(/_?KEY$/i, '')
+    .replace(/_?SECRET$/i, '')
+    .replace(/_?TOKEN$/i, '')
+    .replace(/_?ACCESS_?KEY$/i, '')
+    .replace(/_?API$/i, '')
+
   return cleaned
-    .split('_')
+    .split(/[_-]/)
+    .filter(Boolean)
     .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ')
     .trim() || key
