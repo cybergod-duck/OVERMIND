@@ -1,9 +1,36 @@
 /* ── Base layout vars (shared across all themes) ────────────── */
-:root {
+:root,
+[data-theme="default"] {
   --header-h: 48px;
   --sidebar-w: 300px;
   --footer-h: 32px;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --bg: #07080e;
+  --surface: #0d0e17;
+  --surface-soft: #11121e;
+  --border: #1e2030;
+  --text: #e2e4f0;
+  --text-muted: #6b6f88;
+  --accent: #6366f1;
+  --accent-secondary: #818cf8;
+  --accent-soft: #1a1b3a;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --danger: #ff5c5c;
+  --danger-soft: rgba(255, 92, 92, 0.1);
+  --user-color: #3b82f6;
+  --user-soft: rgba(59, 130, 246, 0.1);
+  --highlight: #ffffff;
+  --glass-bg: rgba(13, 14, 23, 0.7);
+  --glass-border: rgba(30, 32, 48, 0.6);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0c0d1a 0%, #07080e 50%, #04050a 100%);
+  --header-bg: linear-gradient(to right, #0c0d1a, #0a0b16);
+  --scroll-thumb: #1f2335;
+  --scroll-track: transparent;
+  --sidebar-bg: #0a0b14;
+  --settings-bg: #0c0d16;
+  --settings-border: #1f2335;
+  --theme-accent-hue: #6366f1;
+  --theme-bg-hue: #07080e;
 }
 
 /* ══════════════════════════════════════════════════════════════
