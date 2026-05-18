@@ -8,7 +8,8 @@
 
 /* ══════════════════════════════════════════════════════════════
    THEME:  DEFAULT — Clean, modern, balanced dark
-           Subtle gradients, soft shadows, professional
+           Subtle gradients, soft shadows, professional.
+           "Well-designed dark IDE" personality.
    ══════════════════════════════════════════════════════════════ */
 :root,
 [data-theme="default"] {
@@ -39,132 +40,140 @@
   --settings-bg: #0c0d16;
   --settings-border: #1f2335;
   --chat-bg: #080a12;
-  --theme-accent-hue: #6366f1;
-  --theme-bg-hue: #07080e;
   --border-radius-msg: 8px;
   --border-radius-input: 8px;
   --shadow-msg: 0 1px 4px rgba(0,0,0,0.2);
   --glow-intensity: 1;
+  --glass-blur: 8px;
+  --theme-accent-hue: #6366f1;
+  --theme-bg-hue: #07080e;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  OBSIDIAN — Very dark, magenta + teal
-           Strong glassmorphism, luxurious, mysterious depth
+   THEME:  OBSIDIAN — Dark glass luxury, magenta + teal
+           Heavy glassmorphism, frosted panels, deep atmospheric
+           depth. "Premium nightclub / luxury dark glass" vibe.
    ══════════════════════════════════════════════════════════════ */
 [data-theme="obsidian"] {
-  --bg: #030106;
-  --surface: #0a0512;
-  --surface-soft: #0f081c;
-  --border: #201030;
+  --bg: #020005;
+  --surface: #0a0416;
+  --surface-soft: #100820;
+  --border: #1e0a30;
   --text: #eeddff;
-  --text-muted: #7a4a9a;
+  --text-muted: #6a3a8a;
   --accent: #d946ef;
   --accent-secondary: #14b8a6;
   --accent-soft: #2a0f3a;
-  --accent-glow: rgba(217, 70, 239, 0.2);
+  --accent-glow: rgba(217, 70, 239, 0.25);
   --danger: #f43f5e;
   --danger-soft: rgba(244, 63, 94, 0.12);
   --user-color: #14b8a6;
-  --user-soft: rgba(20, 184, 166, 0.12);
+  --user-soft: rgba(20, 184, 166, 0.15);
   --highlight: #f5e6ff;
-  --glass-bg: rgba(10, 5, 18, 0.78);
-  --glass-border: rgba(32, 16, 48, 0.5);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #140826 0%, #030106 50%, #010002 100%);
-  --header-bg: linear-gradient(to right, #0f0720, #0a0512);
-  --scroll-thumb: #2a1040;
+  --glass-bg: rgba(10, 4, 22, 0.65);
+  --glass-border: rgba(30, 10, 48, 0.45);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #180830 0%, #020005 50%, #010002 100%);
+  --header-bg: rgba(10, 4, 22, 0.55);
+  --scroll-thumb: #2a0a40;
   --scroll-track: transparent;
-  --sidebar-bg: #06030c;
+  --sidebar-bg: rgba(10, 4, 22, 0.5);
   --sidebar-text: #dcc8f0;
   --sidebar-text-muted: #6a3a8a;
-  --settings-bg: #0a0512;
-  --settings-border: #201030;
-  --chat-bg: #06030c;
+  --settings-bg: rgba(10, 4, 22, 0.7);
+  --settings-border: rgba(30, 10, 48, 0.5);
+  --chat-bg: rgba(5, 2, 10, 0.6);
+  --border-radius-msg: 14px;
+  --border-radius-input: 12px;
+  --shadow-msg: 0 8px 32px rgba(217, 70, 239, 0.08), inset 0 1px 0 rgba(217, 70, 239, 0.1);
+  --glow-intensity: 1.6;
+  --glass-blur: 24px;
   --theme-accent-hue: #d946ef;
-  --theme-bg-hue: #030106;
-  --border-radius-msg: 10px;
-  --border-radius-input: 10px;
-  --shadow-msg: 0 4px 24px rgba(217, 70, 239, 0.08);
-  --glow-intensity: 1.4;
+  --theme-bg-hue: #020005;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  CYBER — Dark, neon cyan + purple
-           High-contrast, aggressive, futuristic with grid
+   THEME:  CYBER — Aggressive cyberpunk HUD, neon cyan + purple
+           High contrast, sharp corners, visible grid + scanlines.
+           "Blade Runner terminal / cyberpunk game HUD" vibe.
    ══════════════════════════════════════════════════════════════ */
 [data-theme="cyber"] {
-  --bg: #000a0d;
-  --surface: #040d1a;
-  --surface-soft: #081228;
-  --border: #142840;
+  --bg: #000608;
+  --surface: #030a18;
+  --surface-soft: #07102a;
+  --border: #10203a;
   --text: #c8f0ff;
-  --text-muted: #4a7a9a;
+  --text-muted: #3a6a8a;
   --accent: #22d3ee;
-  --accent-secondary: #c084fc;
+  --accent-secondary: #a855f7;
   --accent-soft: #08203a;
-  --accent-glow: rgba(34, 211, 238, 0.25);
-  --danger: #ff4444;
-  --danger-soft: rgba(255, 68, 68, 0.15);
-  --user-color: #a78bfa;
-  --user-soft: rgba(167, 139, 250, 0.15);
+  --accent-glow: rgba(34, 211, 238, 0.3);
+  --danger: #ff3333;
+  --danger-soft: rgba(255, 51, 51, 0.15);
+  --user-color: #a855f7;
+  --user-soft: rgba(168, 85, 247, 0.12);
   --highlight: #e0f8ff;
-  --glass-bg: rgba(4, 13, 26, 0.8);
-  --glass-border: rgba(20, 40, 64, 0.5);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0a1030 0%, #000a0d 50%, #000205 100%);
-  --header-bg: linear-gradient(to right, #0a1030, #040d1a);
-  --scroll-thumb: #1a2880;
+  --glass-bg: rgba(3, 10, 24, 0.85);
+  --glass-border: rgba(16, 32, 58, 0.5);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0a1030 0%, #000608 50%, #000203 100%);
+  --header-bg: linear-gradient(to right, #0a1030, #030a18);
+  --scroll-thumb: #1a2870;
   --scroll-track: transparent;
   --sidebar-bg: #020814;
   --sidebar-text: #c0e0f8;
-  --sidebar-text-muted: #4a6a8a;
-  --settings-bg: #040d1a;
-  --settings-border: #142840;
-  --chat-bg: #010810;
+  --sidebar-text-muted: #3a5a7a;
+  --settings-bg: #030a18;
+  --settings-border: #10203a;
+  --chat-bg: #01060e;
+  --border-radius-msg: 4px;
+  --border-radius-input: 2px;
+  --shadow-msg: 0 0 24px rgba(34, 211, 238, 0.1), 0 0 60px rgba(168, 85, 247, 0.04);
+  --glow-intensity: 2.5;
+  --glass-blur: 4px;
   --theme-accent-hue: #22d3ee;
-  --theme-bg-hue: #000a0d;
-  --border-radius-msg: 6px;
-  --border-radius-input: 4px;
-  --shadow-msg: 0 0 20px rgba(34, 211, 238, 0.08), 0 0 60px rgba(192, 132, 252, 0.04);
-  --glow-intensity: 1.8;
+  --theme-bg-hue: #000608;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  MIDNIGHT — Deep navy / very dark blue
-           Elegant, professional, muted glows, premium feel
+   THEME:  MIDNIGHT — Deep navy, elegant corporate
+           Muted, refined, low contrast. Clean lines, subtle
+           blue tones. "Bloomberg terminal / premium enterprise"
+           personality.
    ══════════════════════════════════════════════════════════════ */
 [data-theme="midnight"] {
-  --bg: #01020a;
-  --surface: #05081a;
-  --surface-soft: #090c22;
-  --border: #101838;
+  --bg: #01030a;
+  --surface: #060a1a;
+  --surface-soft: #0a0e24;
+  --border: #0e1a30;
   --text: #c8d4f0;
-  --text-muted: #4a5a7a;
+  --text-muted: #3a4a6a;
   --accent: #3b82f6;
   --accent-secondary: #60a5fa;
   --accent-soft: #0f1f3a;
-  --accent-glow: rgba(59, 130, 246, 0.12);
-  --danger: #ff5c5c;
-  --danger-soft: rgba(255, 92, 92, 0.1);
+  --accent-glow: rgba(59, 130, 246, 0.08);
+  --danger: #e85050;
+  --danger-soft: rgba(232, 80, 80, 0.08);
   --user-color: #60a5fa;
-  --user-soft: rgba(96, 165, 250, 0.1);
+  --user-soft: rgba(96, 165, 250, 0.06);
   --highlight: #dce8ff;
-  --glass-bg: rgba(5, 8, 26, 0.78);
-  --glass-border: rgba(16, 24, 56, 0.5);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #080c24 0%, #01020a 50%, #000105 100%);
-  --header-bg: linear-gradient(to right, #080c24, #05081a);
-  --scroll-thumb: #1a2040;
+  --glass-bg: rgba(6, 10, 26, 0.8);
+  --glass-border: rgba(14, 26, 48, 0.4);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #080c24 0%, #01030a 50%, #000105 100%);
+  --header-bg: linear-gradient(to right, #080c24, #060a1a);
+  --scroll-thumb: #121c3a;
   --scroll-track: transparent;
-  --sidebar-bg: #040714;
+  --sidebar-bg: #050a18;
   --sidebar-text: #c0cce8;
-  --sidebar-text-muted: #4a5a7a;
-  --settings-bg: #05081a;
-  --settings-border: #101838;
-  --chat-bg: #030512;
+  --sidebar-text-muted: #3a4a6a;
+  --settings-bg: #060a1a;
+  --settings-border: #0e1a30;
+  --chat-bg: #030612;
+  --border-radius-msg: 6px;
+  --border-radius-input: 6px;
+  --shadow-msg: 0 1px 6px rgba(0,0,0,0.25);
+  --glow-intensity: 0.6;
+  --glass-blur: 4px;
   --theme-accent-hue: #3b82f6;
-  --theme-bg-hue: #01020a;
-  --border-radius-msg: 8px;
-  --border-radius-input: 8px;
-  --shadow-msg: 0 1px 8px rgba(0,0,0,0.3);
-  --glow-intensity: 0.8;
+  --theme-bg-hue: #01030a;
 }
 
 /* ── Global reset & base ──────────────────────────────────────── */
