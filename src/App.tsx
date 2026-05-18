@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import './App.css'
-import { Eye, Copy, Trash2, Upload, RefreshCw, Settings, Activity, FolderOpen, ExternalLink, Plus, X, Terminal, ChevronDown, ChevronRight } from 'lucide-react'
+import { Eye, Copy, Trash2, Upload, RefreshCw, Settings, Activity, FolderOpen, ExternalLink, Plus, X, Terminal, ChevronDown, ChevronRight, Shield, Sparkles, Send } from 'lucide-react'
 import { importCsv, type CsvImportResult } from './utils/csvParser'
 import {
   scanDuplicates,
@@ -520,6 +520,7 @@ function App() {
   const [analyzingFolder, setAnalyzingFolder] = useState<string | null>(null)
   const [deleteConfirmPath, setDeleteConfirmPath] = useState<string | null>(null)
   const [doctorRunning, setDoctorRunning] = useState<string | null>(null)
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'vault' | 'tools'>('vault')
 
   // ── First-run setup state ──────────────────────────────────
   const [firstRunComplete, setFirstRunComplete] = useState<boolean | null>(null) // null = loading
@@ -1968,10 +1969,25 @@ function App() {
 
       <div className="main">
         <aside className="sidebar">
-          <div className="section-label"><span className="section-icon">◆</span> VAULT</div>
+          <div className="sidebar-tabs">
+            <button
+              className={`sidebar-tab ${activeSidebarTab === 'vault' ? 'active' : ''}`}
+              onClick={() => setActiveSidebarTab('vault')}
+            >
+              VAULT
+            </button>
+            <button
+              className={`sidebar-tab ${activeSidebarTab === 'tools' ? 'active' : ''}`}
+              onClick={() => setActiveSidebarTab('tools')}
+            >
+              TOOLS
+            </button>
+          </div>
 
-          {/* Category filter dropdown */}
-          <select
+          {activeSidebarTab === 'vault' ? (
+            <>
+              {/* Category filter dropdown */}
+              <select
             className="vault-input"
             value={vaultFilter}
             onChange={e => setVaultFilter(e.target.value as 'all' | Secret['type'])}
@@ -2102,6 +2118,10 @@ function App() {
             <Upload size={12} /> IMPORT VAULT CSV
           </button>
 
+          <button className="btn-env" onClick={handleVaultScan}>
+            <Activity size={12} /> SCAN VAULT
+          </button>
+
           {/* Import status feedback */}
           {importStatus.msg && (
             <div className={`vault-import-status vault-import-status--${importStatus.type}`}>
@@ -2109,29 +2129,10 @@ function App() {
             </div>
           )}
 
-          {/* ── Vault Tools ─────────────────────────────────────── */}
-          <div className="section-label vault-tools-toggle" onClick={() => setVaultToolsOpen(!vaultToolsOpen)} style={{ marginTop: 8, cursor: 'pointer' }}>
-            <span className="section-toggle">{vaultToolsOpen ? '▾' : '▸'}</span>
-            <span className="section-icon">⚡</span> TOOLS
-            {vaultScanReport && (
-              <span className="vault-tools-badge">
-                {vaultScanReport.duplicates.length + vaultScanReport.lowQuality.length}
-              </span>
-            )}
-          </div>
-
-          {vaultToolsOpen && (
-            <div className="vault-tools-section">
-              {/* Scan buttons */}
-              <div className="vault-tools-actions">
-                <button className="btn-env" onClick={handleVaultScan}>
-                  <Activity size={12} /> SCAN VAULT
-                </button>
-              </div>
-
-              {/* Scan report */}
-              {vaultScanReport && (
-                <div className="vault-tools-report">
+          {/* ── Vault Tools Report ─────────────────────────────────────── */}
+          {vaultScanReport && (
+            <div className="vault-tools-section" style={{ border: 'none', background: 'transparent', padding: 0, marginTop: 8 }}>
+              <div className="vault-tools-report">
                   <div className="vault-tools-report-header">
                     <span>SCAN RESULTS</span>
                     <button className="vault-tools-copy-btn" onClick={handleCopyReport} title="Copy report to clipboard">
@@ -2218,10 +2219,11 @@ function App() {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          )}
-
+              </div>
+            )}
+            </>
+          ) : (
+            <>
           {/* ── Watched Folders ──────────────────────────────── */}
           <div className="section-label" style={{ marginTop: 8 }}>
             <span className="section-icon">◇</span> FOLDERS <span className="section-count">({watchedFolders.length})</span>
@@ -2713,6 +2715,8 @@ function App() {
               </div>
             </div>
           )}
+            </>
+          )}
 
         </aside>
 
@@ -2725,20 +2729,6 @@ function App() {
                   <div className="empty-logo-text">Overmind</div>
                 </div>
                 <div className="empty-tagline">Personal AI For Your PC</div>
-                <div className="empty-suggestions">
-                  <button className="suggestion-chip" onClick={() => setInput('Run system diagnostics')}>
-                    <span className="suggestion-icon">🔍</span> Run diagnostics
-                  </button>
-                  <button className="suggestion-chip" onClick={() => setInput('Check my privacy and security')}>
-                    <span className="suggestion-icon">🛡️</span> Check privacy
-                  </button>
-                  <button className="suggestion-chip" onClick={() => setInput('Analyze my watched folders')}>
-                    <span className="suggestion-icon">📁</span> Analyze folders
-                  </button>
-                  <button className="suggestion-chip" onClick={() => setInput('What can you do?')}>
-                    <span className="suggestion-icon">✦</span> What can you do?
-                  </button>
-                </div>
               </div>
             ) : (
               messages.map((m, i) => (
@@ -2756,48 +2746,40 @@ function App() {
               ))
             )}
             {loading && (
-              <div className="msg msg-assistant thinking-msg">
-                <div className="msg-avatar">◆</div>
-                <div className="msg-body">
-                  <div className="thinking-indicator">
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                    <span className="thinking-label">Thinking</span>
-                    <span className="thinking-perf">
-                      {isQuantizedModel ? '⚡' : ''} {(elapsedTime / 1000).toFixed(1)}s
-                    </span>
-                  </div>
-                </div>
+              <div className="thinking-indicator-simple">
+                <span className="thinking-icon">◆</span>
+                <span className="thinking-text">Thinking {(elapsedTime / 1000).toFixed(1)}s</span>
               </div>
             )}
           </div>
 
           <div className="input-bar">
-            <button className="btn-attach" title="Attach file">
-              <span className="attach-icon">+</span>
-            </button>
-            <textarea
-              className="input-field"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  sendMessage()
-                }
-              }}
-              placeholder="Message Overmind..."
-              disabled={loading}
-              rows={1}
-            />
-            <button
-              className="btn-send"
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-            >
-              Send
-            </button>
+            <div className="input-container">
+              <button className="btn-attach" title="Attach file">
+                <Plus size={16} />
+              </button>
+              <textarea
+                className="input-field"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendMessage()
+                  }
+                }}
+                placeholder="Message Overmind..."
+                disabled={loading}
+                rows={1}
+              />
+              <button
+                className="btn-send"
+                onClick={sendMessage}
+                disabled={loading || !input.trim()}
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2806,9 +2788,6 @@ function App() {
         <div className="footer-status">
           <span className="dot" /> SYSTEM OPERATIONAL
           {isQuantizedModel && <span className="footer-optimized-badge">⚡ OPTIMIZED</span>}
-        </div>
-        <div className="footer-events">
-          {events.join(' | ') || displayLabel}
         </div>
         <div className="footer-version">© BC RESEARCH | v4.0</div>
       </footer>
