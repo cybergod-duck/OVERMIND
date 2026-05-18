@@ -1,41 +1,16 @@
 /* ── Base layout vars (shared across all themes) ────────────── */
-:root,
-[data-theme="default"] {
+:root {
   --header-h: 48px;
   --sidebar-w: 300px;
   --footer-h: 32px;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-  --bg: #07080e;
-  --surface: #0d0e17;
-  --surface-soft: #11121e;
-  --border: #1e2030;
-  --text: #e2e4f0;
-  --text-muted: #6b6f88;
-  --accent: #6366f1;
-  --accent-secondary: #818cf8;
-  --accent-soft: #1a1b3a;
-  --accent-glow: rgba(99, 102, 241, 0.15);
-  --danger: #ff5c5c;
-  --danger-soft: rgba(255, 92, 92, 0.1);
-  --user-color: #3b82f6;
-  --user-soft: rgba(59, 130, 246, 0.1);
-  --highlight: #ffffff;
-  --glass-bg: rgba(13, 14, 23, 0.7);
-  --glass-border: rgba(30, 32, 48, 0.6);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0c0d1a 0%, #07080e 50%, #04050a 100%);
-  --header-bg: linear-gradient(to right, #0c0d1a, #0a0b16);
-  --scroll-thumb: #1f2335;
-  --scroll-track: transparent;
-  --sidebar-bg: #0a0b14;
-  --settings-bg: #0c0d16;
-  --settings-border: #1f2335;
-  --theme-accent-hue: #6366f1;
-  --theme-bg-hue: #07080e;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  DEFAULT — Balanced deep dark with indigo accents
+   THEME:  DEFAULT — Clean, modern, balanced dark
+           Subtle gradients, soft shadows, professional
    ══════════════════════════════════════════════════════════════ */
+:root,
 [data-theme="default"] {
   --bg: #07080e;
   --surface: #0d0e17;
@@ -59,138 +34,137 @@
   --scroll-thumb: #1f2335;
   --scroll-track: transparent;
   --sidebar-bg: #0a0b14;
+  --sidebar-text: #e2e4f0;
+  --sidebar-text-muted: #6b6f88;
   --settings-bg: #0c0d16;
   --settings-border: #1f2335;
+  --chat-bg: #080a12;
   --theme-accent-hue: #6366f1;
   --theme-bg-hue: #07080e;
+  --border-radius-msg: 8px;
+  --border-radius-input: 8px;
+  --shadow-msg: 0 1px 4px rgba(0,0,0,0.2);
+  --glow-intensity: 1;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  CLEAN — Minimal, elegant light (Linear / Arc-inspired)
-   ══════════════════════════════════════════════════════════════ */
-[data-theme="clean"] {
-  --bg: #f5f5f7;
-  --surface: #ffffff;
-  --surface-soft: #f0f0f2;
-  --border: #e0e0e4;
-  --text: #1c1c1e;
-  --text-muted: #8e8e93;
-  --accent: #6c6cff;
-  --accent-secondary: #8b8bff;
-  --accent-soft: #eeeeff;
-  --accent-glow: rgba(108, 108, 255, 0.08);
-  --danger: #ff3b30;
-  --danger-soft: rgba(255, 59, 48, 0.06);
-  --user-color: #5e5ce6;
-  --user-soft: rgba(94, 92, 230, 0.06);
-  --highlight: #1c1c1e;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(224, 224, 228, 0.6);
-  --bg-gradient: linear-gradient(180deg, #fafafa 0%, #f5f5f7 100%);
-  --header-bg: rgba(255, 255, 255, 0.92);
-  --scroll-thumb: #d1d1d6;
-  --scroll-track: transparent;
-  --sidebar-bg: #f8f8fa;
-  --settings-bg: #ffffff;
-  --settings-border: #e0e0e4;
-  --theme-accent-hue: #6c6cff;
-  --theme-bg-hue: #ffffff;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   THEME:  OBSIDIAN — Deep black, magenta + teal, cyber-luxury
+   THEME:  OBSIDIAN — Very dark, magenta + teal
+           Strong glassmorphism, luxurious, mysterious depth
    ══════════════════════════════════════════════════════════════ */
 [data-theme="obsidian"] {
-  --bg: #050308;
-  --surface: #0c0812;
-  --surface-soft: #110d1a;
-  --border: #1e1030;
-  --text: #e2d8f0;
-  --text-muted: #7a5a9a;
+  --bg: #030106;
+  --surface: #0a0512;
+  --surface-soft: #0f081c;
+  --border: #201030;
+  --text: #eeddff;
+  --text-muted: #7a4a9a;
   --accent: #d946ef;
   --accent-secondary: #14b8a6;
   --accent-soft: #2a0f3a;
-  --accent-glow: rgba(217, 70, 239, 0.15);
+  --accent-glow: rgba(217, 70, 239, 0.2);
   --danger: #f43f5e;
-  --danger-soft: rgba(244, 63, 94, 0.1);
+  --danger-soft: rgba(244, 63, 94, 0.12);
   --user-color: #14b8a6;
-  --user-soft: rgba(20, 184, 166, 0.1);
-  --highlight: #f0e6ff;
-  --glass-bg: rgba(12, 8, 18, 0.75);
-  --glass-border: rgba(30, 16, 48, 0.6);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #10081e 0%, #050308 50%, #020105 100%);
-  --header-bg: linear-gradient(to right, #10081e, #0c0812);
+  --user-soft: rgba(20, 184, 166, 0.12);
+  --highlight: #f5e6ff;
+  --glass-bg: rgba(10, 5, 18, 0.78);
+  --glass-border: rgba(32, 16, 48, 0.5);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #140826 0%, #030106 50%, #010002 100%);
+  --header-bg: linear-gradient(to right, #0f0720, #0a0512);
   --scroll-thumb: #2a1040;
   --scroll-track: transparent;
-  --sidebar-bg: #080510;
-  --settings-bg: #0c0812;
-  --settings-border: #1e1030;
+  --sidebar-bg: #06030c;
+  --sidebar-text: #dcc8f0;
+  --sidebar-text-muted: #6a3a8a;
+  --settings-bg: #0a0512;
+  --settings-border: #201030;
+  --chat-bg: #06030c;
   --theme-accent-hue: #d946ef;
-  --theme-bg-hue: #050308;
+  --theme-bg-hue: #030106;
+  --border-radius-msg: 10px;
+  --border-radius-input: 10px;
+  --shadow-msg: 0 4px 24px rgba(217, 70, 239, 0.08);
+  --glow-intensity: 1.4;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  CYBER — High-contrast neon, cyan + purple + pink
+   THEME:  CYBER — Dark, neon cyan + purple
+           High-contrast, aggressive, futuristic with grid
    ══════════════════════════════════════════════════════════════ */
 [data-theme="cyber"] {
-  --bg: #000510;
-  --surface: #060b1a;
-  --surface-soft: #0a1025;
-  --border: #1a2040;
-  --text: #dce6ff;
-  --text-muted: #5a7aaa;
+  --bg: #000a0d;
+  --surface: #040d1a;
+  --surface-soft: #081228;
+  --border: #142840;
+  --text: #c8f0ff;
+  --text-muted: #4a7a9a;
   --accent: #22d3ee;
   --accent-secondary: #c084fc;
-  --accent-soft: #0a203a;
-  --accent-glow: rgba(34, 211, 238, 0.2);
+  --accent-soft: #08203a;
+  --accent-glow: rgba(34, 211, 238, 0.25);
   --danger: #ff4444;
-  --danger-soft: rgba(255, 68, 68, 0.12);
+  --danger-soft: rgba(255, 68, 68, 0.15);
   --user-color: #a78bfa;
-  --user-soft: rgba(167, 139, 250, 0.12);
-  --highlight: #ffffff;
-  --glass-bg: rgba(6, 11, 26, 0.75);
-  --glass-border: rgba(26, 32, 64, 0.6);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0a1030 0%, #000510 50%, #000208 100%);
-  --header-bg: linear-gradient(to right, #0a1030, #060b1a);
+  --user-soft: rgba(167, 139, 250, 0.15);
+  --highlight: #e0f8ff;
+  --glass-bg: rgba(4, 13, 26, 0.8);
+  --glass-border: rgba(20, 40, 64, 0.5);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #0a1030 0%, #000a0d 50%, #000205 100%);
+  --header-bg: linear-gradient(to right, #0a1030, #040d1a);
   --scroll-thumb: #1a2880;
   --scroll-track: transparent;
-  --sidebar-bg: #040818;
-  --settings-bg: #060b1a;
-  --settings-border: #1a2040;
+  --sidebar-bg: #020814;
+  --sidebar-text: #c0e0f8;
+  --sidebar-text-muted: #4a6a8a;
+  --settings-bg: #040d1a;
+  --settings-border: #142840;
+  --chat-bg: #010810;
   --theme-accent-hue: #22d3ee;
-  --theme-bg-hue: #000510;
+  --theme-bg-hue: #000a0d;
+  --border-radius-msg: 6px;
+  --border-radius-input: 4px;
+  --shadow-msg: 0 0 20px rgba(34, 211, 238, 0.08), 0 0 60px rgba(192, 132, 252, 0.04);
+  --glow-intensity: 1.8;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME:  MIDNIGHT — Deep navy/blue, professional + premium
+   THEME:  MIDNIGHT — Deep navy / very dark blue
+           Elegant, professional, muted glows, premium feel
    ══════════════════════════════════════════════════════════════ */
 [data-theme="midnight"] {
-  --bg: #020308;
-  --surface: #060914;
-  --surface-soft: #0a0e1a;
-  --border: #14182a;
-  --text: #dce1f0;
-  --text-muted: #5a6a8a;
+  --bg: #01020a;
+  --surface: #05081a;
+  --surface-soft: #090c22;
+  --border: #101838;
+  --text: #c8d4f0;
+  --text-muted: #4a5a7a;
   --accent: #3b82f6;
   --accent-secondary: #60a5fa;
   --accent-soft: #0f1f3a;
-  --accent-glow: rgba(59, 130, 246, 0.15);
+  --accent-glow: rgba(59, 130, 246, 0.12);
   --danger: #ff5c5c;
   --danger-soft: rgba(255, 92, 92, 0.1);
   --user-color: #60a5fa;
   --user-soft: rgba(96, 165, 250, 0.1);
-  --highlight: #ffffff;
-  --glass-bg: rgba(6, 9, 20, 0.75);
-  --glass-border: rgba(20, 24, 42, 0.6);
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #080c1e 0%, #020308 50%, #010105 100%);
-  --header-bg: linear-gradient(to right, #080c1e, #060914);
+  --highlight: #dce8ff;
+  --glass-bg: rgba(5, 8, 26, 0.78);
+  --glass-border: rgba(16, 24, 56, 0.5);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #080c24 0%, #01020a 50%, #000105 100%);
+  --header-bg: linear-gradient(to right, #080c24, #05081a);
   --scroll-thumb: #1a2040;
   --scroll-track: transparent;
-  --sidebar-bg: #050812;
-  --settings-bg: #080c1e;
-  --settings-border: #1a2040;
+  --sidebar-bg: #040714;
+  --sidebar-text: #c0cce8;
+  --sidebar-text-muted: #4a5a7a;
+  --settings-bg: #05081a;
+  --settings-border: #101838;
+  --chat-bg: #030512;
   --theme-accent-hue: #3b82f6;
-  --theme-bg-hue: #020308;
+  --theme-bg-hue: #01020a;
+  --border-radius-msg: 8px;
+  --border-radius-input: 8px;
+  --shadow-msg: 0 1px 8px rgba(0,0,0,0.3);
+  --glow-intensity: 0.8;
 }
 
 /* ── Global reset & base ──────────────────────────────────────── */

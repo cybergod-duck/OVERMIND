@@ -1748,14 +1748,6 @@ function App() {
               <span className="theme-btn-swatch theme-btn-swatch--default" />
             </button>
             <button
-              className={`theme-btn${settingsTheme === 'clean' ? ' active' : ''}`}
-              onClick={() => { setSettingsTheme('clean'); persistSetting('theme', 'clean') }}
-              title="Clean — Minimal light"
-              aria-label="Clean theme"
-            >
-              <span className="theme-btn-swatch theme-btn-swatch--clean" />
-            </button>
-            <button
               className={`theme-btn${settingsTheme === 'obsidian' ? ' active' : ''}`}
               onClick={() => { setSettingsTheme('obsidian'); persistSetting('theme', 'obsidian') }}
               title="Obsidian — Magenta & teal"
@@ -1958,7 +1950,6 @@ function App() {
                 }}
               >
                 <option value="default">Default — Balanced dark</option>
-                <option value="clean">Clean — Minimal light</option>
                 <option value="obsidian">Obsidian — Magenta & teal</option>
                 <option value="cyber">Cyber — Neon high-contrast</option>
                 <option value="midnight">Midnight — Deep navy</option>
