@@ -1,70 +1,46 @@
-// Premium Theme System for Overmind
-
 export type ThemeName = 'default' | 'obsidian' | 'cyber' | 'midnight';
 
 export interface Theme {
-  name: ThemeName;
-  displayName: string;
-  colors: {
-    primary: string;
-    accent: string;
-    background: string;
-    surface: string;
-    text: string;
-    // Add more as needed
-  };
-  className: string;
+  name: string;
+  primary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+  // Add more tokens as needed
 }
 
 export const themes: Record<ThemeName, Theme> = {
   default: {
-    name: 'default',
-    displayName: 'Default',
-    colors: {
-      primary: '#3b82f6',
-      accent: '#10b981',
-      background: '#0f172a',
-      surface: '#1e2937',
-      text: '#f8fafc',
-    },
-    className: 'theme-default',
+    name: 'Default',
+    primary: '#3b82f6',
+    accent: '#64748b',
+    background: '#0f172a',
+    surface: '#1e2937',
+    text: '#f1f5f9'
   },
   obsidian: {
-    name: 'obsidian',
-    displayName: 'Obsidian',
-    colors: {
-      primary: '#c026d3', // magenta
-      accent: '#14b8a6', // teal
-      background: '#0a0a0a',
-      surface: '#1a1a1a',
-      text: '#e0f2f1',
-    },
-    className: 'theme-obsidian',
+    name: 'Obsidian',
+    primary: '#c026d3',
+    accent: '#14b8a6',
+    background: '#0a0a0a',
+    surface: '#1a1a1a',
+    text: '#e2e8f0'
   },
   cyber: {
-    name: 'cyber',
-    displayName: 'Cyber',
-    colors: {
-      primary: '#22d3ee',
-      accent: '#f472b6',
-      background: '#050505',
-      surface: '#111827',
-      text: '#67e8f9',
-    },
-    className: 'theme-cyber',
+    name: 'Cyber',
+    primary: '#22d3ee',
+    accent: '#f97316',
+    background: '#050505',
+    surface: '#111111',
+    text: '#67e8f9'
   },
   midnight: {
-    name: 'midnight',
-    displayName: 'Midnight',
-    colors: {
-      primary: '#a3a3a3',
-      accent: '#eab308',
-      background: '#020617',
-      surface: '#0f172a',
-      text: '#e2e8f0',
-    },
-    className: 'theme-midnight',
-  },
+    name: 'Midnight',
+    primary: '#eab308',
+    accent: '#a3a3a3',
+    background: '#020617',
+    surface: '#0f172a',
+    text: '#f8fafc'
+  }
 };
-
-// Tailwind config extension suggestion
