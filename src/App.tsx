@@ -949,17 +949,42 @@ function App() {
     const reader = new FileReader()
     reader.onload = () => {
       const text = reader.result as string
-      const lines = text.split('\n')
-      const existing = new Set(secrets.map(s => s.label.toLowerCase()))
+      const lines = text.split(/\r?\n/)
       let added = 0
+
+      // Value-prefix → provider detection for bare-value files
+      const VALUE_PREFIXES: [RegExp, string, string][] = [
+        [/^sk-ant-/,        'anthropic',  'ANTHROPIC_API_KEY'],
+        [/^sk-or-/,         'openrouter', 'OPENROUTER_API_KEY'],
+        [/^sk-proj-|^sk-/,  'openrouter', 'OPENAI_API_KEY'],
+        [/^AIzaSy/,         'google',     'GOOGLE_API_KEY'],
+        [/^gsk_/,           'groq',       'GROQ_API_KEY'],
+        [/^xai-/,           'xai',        'XAI_API_KEY'],
+        [/^ds-/,            'deepseek',   'DEEPSEEK_API_KEY'],
+        [/^ms-/,            'moonshot',   'MOONSHOT_API_KEY'],
+      ]
+
       for (const line of lines) {
         const trimmed = line.trim()
-        if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue
-        const eqIdx = trimmed.indexOf('=')
-        const key = trimmed.slice(0, eqIdx).trim()
-        const value = trimmed.slice(eqIdx + 1).trim()
+        if (!trimmed || trimmed.startsWith('#')) continue
+
+        let key: string
+        let value: string
+
+        if (trimmed.includes('=')) {
+          // Standard KEY=VALUE format
+          const eqIdx = trimmed.indexOf('=')
+          key = trimmed.slice(0, eqIdx).trim()
+          value = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '')
+        } else {
+          // Bare value — detect provider from value prefix
+          const match = VALUE_PREFIXES.find(([pattern]) => pattern.test(trimmed))
+          if (!match) continue // can't identify, skip
+          key = match[2]
+          value = trimmed
+        }
+
         if (!key || !value) continue
-        if (existing.has(key.toLowerCase())) continue
 
         let provider: string | undefined
         let type: Secret['type'] = 'api_key'
@@ -983,9 +1008,14 @@ function App() {
             createdAt: Date.now(),
           },
         ])
-        existing.add(key.toLowerCase())
         added++
       }
+
+      setImportStatus({
+        msg: added > 0 ? `✓ ${added} key${added > 1 ? 's' : ''} imported` : 'No keys found — check file format',
+        type: added > 0 ? 'success' : 'error',
+      })
+      setTimeout(() => setImportStatus({ msg: '', type: '' }), 8000)
       log(`ENV_IMPORT: ${added} entries added`)
     }
     reader.readAsText(file)
@@ -2091,7 +2121,7 @@ function App() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".env,.txt"
+            accept=".env,.txt,.env.txt,"
             style={{ display: 'none' }}
             onChange={handleEnvImport}
           />
