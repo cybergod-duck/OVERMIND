@@ -1,47 +1,56 @@
 /* ══════════════════════════════════════════════════════════════
    THEME-SPECIAL EFFECTS — applied via data-theme on <html>
-   Each theme gets a radically different visual treatment.
+   Each theme gets a fundamentally different visual language.
    ══════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════
-   DEFAULT — Balanced, clean, professional
-   "Well-designed dark IDE" — subtle, moderate, refined.
+   DEFAULT — Clean, modern, balanced dark
+   "Well-designed dark IDE" — subtle glass, soft shadows,
+   moderate rounding, professional but not flashy.
    ══════════════════════════════════════════════════════════════ */
 [data-theme="default"] .msg-avatar {
   text-shadow: 0 0 8px var(--accent-glow);
 }
+[data-theme="default"] .dot {
+  box-shadow: 0 0 6px var(--accent-glow);
+}
 
 /* ══════════════════════════════════════════════════════════════
-   OBSIDIAN — Heavy glass luxury, magenta + teal
-   "Premium nightclub dark glass" — frosted panels everywhere,
-   deep blur, atmospheric depth, rounded everything.
+   OBSIDIAN — Layered luxury glass, magenta + teal
+   "Premium nightclub dark glass" — EVERY panel is frosted glass
+   with heavy blur, physical depth via inset shadows, and
+   atmospheric magenta/teal inner glows. Feels like overlapping
+   glass sheets floating over a dark gradient background.
    ══════════════════════════════════════════════════════════════ */
+/* Fix the background so glass effect is visible through panels */
 [data-theme="obsidian"] .overmind {
   background-attachment: fixed;
 }
 
-/* Frosted glass header — blends into background */
+/* Glass header — strong blur, blends into bg, subtle magenta glow */
 [data-theme="obsidian"] .header {
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   background: rgba(10, 4, 22, 0.35) !important;
-  border-bottom-color: rgba(217, 70, 239, 0.12);
+  border-bottom: 1px solid rgba(217, 70, 239, 0.12);
+  box-shadow: 0 1px 0 rgba(217, 70, 239, 0.06);
 }
 
-/* Glass sidebar — translucent, blurry edge */
+/* Glass sidebar — blurred panel, teal-tinted right edge */
 [data-theme="obsidian"] .sidebar {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   background: rgba(10, 4, 22, 0.4) !important;
-  border-right-color: rgba(217, 70, 239, 0.08);
+  border-right: 1px solid rgba(217, 70, 239, 0.08);
+  box-shadow: inset -1px 0 0 rgba(20, 184, 166, 0.04);
 }
 
-/* Glass input bar */
+/* Glass input bar — floats above content */
 [data-theme="obsidian"] .input-bar {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   background: rgba(10, 4, 22, 0.3) !important;
-  border-top-color: rgba(217, 70, 239, 0.08);
+  border-top: 1px solid rgba(217, 70, 239, 0.08);
 }
 
 /* Glass input field */
@@ -49,44 +58,43 @@
   background: rgba(10, 4, 22, 0.4) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-color: rgba(217, 70, 239, 0.1);
+  border: 1px solid rgba(217, 70, 239, 0.1);
 }
 
-/* Deep atmospheric glow behind chat */
+/* Glass footer */
+[data-theme="obsidian"] .footer {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  background: rgba(10, 4, 22, 0.3) !important;
+  border-top-color: rgba(217, 70, 239, 0.06);
+}
+
+/* Deep atmospheric glow behind chat — visible through glass messages */
 [data-theme="obsidian"] .content {
-  box-shadow: inset 0 0 120px rgba(217, 70, 239, 0.03), inset 0 0 60px rgba(20, 184, 166, 0.02);
+  box-shadow: inset 0 0 150px rgba(217, 70, 239, 0.04), inset 0 0 80px rgba(20, 184, 166, 0.02);
 }
 
-/* Glass assistant messages — high blur, subtle glow */
+/* Glass assistant messages — heavy blur, physical depth */
 [data-theme="obsidian"] .msg-assistant {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   background: rgba(10, 4, 22, 0.5) !important;
-  border-color: rgba(217, 70, 239, 0.15);
-  box-shadow: 0 8px 32px rgba(217, 70, 239, 0.06), inset 0 1px 0 rgba(217, 70, 239, 0.08);
+  border: 1px solid rgba(217, 70, 239, 0.15);
+  box-shadow:
+    0 8px 40px rgba(217, 70, 239, 0.08),
+    inset 0 2px 0 rgba(217, 70, 239, 0.10),
+    inset 0 -1px 0 rgba(217, 70, 239, 0.04);
 }
 
-/* Glass user messages */
+/* Glass user messages — teal glass bubble */
 [data-theme="obsidian"] .msg-user {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   background: rgba(20, 184, 166, 0.08) !important;
-  border-color: rgba(20, 184, 166, 0.15);
-}
-
-[data-theme="obsidian"] .msg-avatar {
-  text-shadow: 0 0 16px var(--accent), 0 0 32px rgba(20, 184, 166, 0.3);
-}
-
-[data-theme="obsidian"] .logo {
-  background: linear-gradient(135deg, #14b8a6 0%, #d946ef 50%, #f5e6ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-[data-theme="obsidian"] .dot {
-  box-shadow: 0 0 20px rgba(217, 70, 239, 0.8), 0 0 40px rgba(217, 70, 239, 0.2);
+  border: 1px solid rgba(20, 184, 166, 0.15);
+  box-shadow:
+    0 4px 20px rgba(20, 184, 166, 0.06),
+    inset 0 1px 0 rgba(20, 184, 166, 0.08);
 }
 
 /* Glass settings panel */
@@ -94,6 +102,8 @@
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   background: rgba(10, 4, 22, 0.55) !important;
+  border: 1px solid rgba(217, 70, 239, 0.1);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
 }
 
 /* Glass theme switcher */
@@ -104,12 +114,42 @@
   border-color: rgba(217, 70, 239, 0.1);
 }
 
+/* Glass modal/vault panels */
+[data-theme="obsidian"] .vault-panel,
+[data-theme="obsidian"] .privacy-panel,
+[data-theme="obsidian"] .doctor-panel {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(10, 4, 22, 0.5) !important;
+  border: 1px solid rgba(217, 70, 239, 0.08);
+}
+
+/* Lavender avatar glow */
+[data-theme="obsidian"] .msg-avatar {
+  text-shadow: 0 0 16px var(--accent), 0 0 32px rgba(20, 184, 166, 0.3);
+}
+
+/* Premium gradient logo */
+[data-theme="obsidian"] .logo {
+  background: linear-gradient(135deg, #14b8a6 0%, #d946ef 50%, #f5e6ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Aggressive dot glow — visible through glass */
+[data-theme="obsidian"] .dot {
+  box-shadow: 0 0 24px rgba(217, 70, 239, 0.9), 0 0 48px rgba(217, 70, 239, 0.3);
+}
+
 /* ══════════════════════════════════════════════════════════════
-   CYBER — Aggressive cyberpunk HUD
-   "Blade Runner terminal" — grid + scanlines, neon glows,
-   sharp corners, very high contrast, tech aggression.
+   CYBER — Aggressive HUD terminal, neon cyan + purple
+   "Blade Runner / cyberpunk game HUD" — visible grid overlay,
+   scanlines, electroluminescent neon borders on messages,
+   ultra-sharp corners, maximum contrast, tech aggression.
+   Feels like a futuristic control panel.
    ══════════════════════════════════════════════════════════════ */
-/* Grid overlay — more visible, tighter pattern */
+/* Grid overlay — VISIBLE at 0.12 opacity, tighter 20px pattern */
 [data-theme="cyber"] .overmind::before {
   content: '';
   position: fixed;
@@ -117,12 +157,12 @@
   pointer-events: none;
   z-index: 9999;
   background-image:
-    linear-gradient(rgba(34, 211, 238, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(rgba(34, 211, 238, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.12) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-/* Scanline overlay */
+/* Scanline overlay — visible at 0.05 opacity */
 [data-theme="cyber"] .overmind::after {
   content: '';
   position: fixed;
@@ -133,120 +173,208 @@
     0deg,
     transparent,
     transparent 2px,
-    rgba(34, 211, 238, 0.025) 2px,
-    rgba(34, 211, 238, 0.025) 4px
+    rgba(34, 211, 238, 0.05) 2px,
+    rgba(34, 211, 238, 0.05) 4px
   );
 }
 
-/* Neon cyan glow on assistant messages */
+/* Neon cyan assistant messages — electroluminescent border, no glass */
 [data-theme="cyber"] .msg-assistant {
-  border-color: rgba(34, 211, 238, 0.25) !important;
-  background: rgba(3, 10, 24, 0.75) !important;
+  border: 1px solid rgba(34, 211, 238, 0.4) !important;
+  background: rgba(3, 10, 24, 0.85) !important;
+  backdrop-filter: none !important;
   box-shadow:
-    0 0 24px rgba(34, 211, 238, 0.1),
-    0 0 60px rgba(34, 211, 238, 0.03),
+    0 0 24px rgba(34, 211, 238, 0.12),
+    0 0 60px rgba(34, 211, 238, 0.04),
     inset 0 0 30px rgba(34, 211, 238, 0.03);
 }
 
-/* Purple glow on user messages */
+/* Neon purple user messages */
 [data-theme="cyber"] .msg-user {
-  border-color: rgba(168, 85, 247, 0.3) !important;
-  background: rgba(168, 85, 247, 0.06) !important;
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.06);
+  border: 1px solid rgba(168, 85, 247, 0.5) !important;
+  background: rgba(168, 85, 247, 0.08) !important;
+  backdrop-filter: none !important;
+  box-shadow:
+    0 0 20px rgba(168, 85, 247, 0.1),
+    inset 0 0 20px rgba(168, 85, 247, 0.03);
 }
 
+/* Dual-neon avatar glow */
 [data-theme="cyber"] .msg-avatar {
   text-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent-secondary);
 }
 
-/* Cyan glow line under header */
+/* Neon glow line under header */
 [data-theme="cyber"] .header {
-  border-bottom-color: rgba(34, 211, 238, 0.2);
-  box-shadow: 0 2px 0 rgba(34, 211, 238, 0.04);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+  box-shadow: 0 2px 0 rgba(34, 211, 238, 0.08);
+  backdrop-filter: none !important;
 }
 
-/* Cyan sidebar border */
+/* Neon sidebar border + subtle grid tint */
 [data-theme="cyber"] .sidebar {
-  border-right-color: rgba(34, 211, 238, 0.1);
+  border-right: 1px solid rgba(34, 211, 238, 0.12);
+  box-shadow: inset -1px 0 0 rgba(34, 211, 238, 0.04);
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
-/* Aggressive neon dot */
+/* Aggressive maximum-intensity dot glow */
 [data-theme="cyber"] .dot {
-  box-shadow: 0 0 20px rgba(34, 211, 238, 1), 0 0 60px rgba(34, 211, 238, 0.4);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 1), 0 0 60px rgba(34, 211, 238, 0.6), 0 0 100px rgba(34, 211, 238, 0.2);
 }
 
+/* Neon status pill */
 [data-theme="cyber"] .status-pill {
-  border-color: rgba(34, 211, 238, 0.3);
-  background: rgba(34, 211, 238, 0.04);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.06);
 }
 
-/* Cyber border on input bar */
+/* Neon top border on input bar */
 [data-theme="cyber"] .input-bar {
-  border-top-color: rgba(34, 211, 238, 0.12);
+  border-top: 1px solid rgba(34, 211, 238, 0.2);
+  box-shadow: 0 -1px 0 rgba(34, 211, 238, 0.04);
+  backdrop-filter: none !important;
 }
 
-/* Neon input focus */
+/* Glowing input focus — strong neon ring */
 [data-theme="cyber"] .input-field:focus {
   border-color: #22d3ee !important;
-  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2), 0 0 20px rgba(34, 211, 238, 0.05) !important;
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.25),
+    0 0 24px rgba(34, 211, 238, 0.08) !important;
 }
 
 /* Neon theme switcher */
 [data-theme="cyber"] .theme-switcher {
-  border-color: rgba(34, 211, 238, 0.2);
+  border: 1px solid rgba(34, 211, 238, 0.25);
   background: rgba(3, 10, 24, 0.6);
 }
 
-/* Sharp, techy send button hover */
+/* Neon burst on send button hover */
 [data-theme="cyber"] .btn-send:hover:not(:disabled) {
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3), 0 4px 16px rgba(34, 211, 238, 0.15);
+  box-shadow:
+    0 0 24px rgba(34, 211, 238, 0.4),
+    0 0 60px rgba(34, 211, 238, 0.1),
+    0 4px 16px rgba(34, 211, 238, 0.2);
+}
+
+/* Neon footer border */
+[data-theme="cyber"] .footer {
+  border-top: 1px solid rgba(34, 211, 238, 0.1);
+  backdrop-filter: none !important;
+}
+
+/* Neon settings panel */
+[data-theme="cyber"] .settings-panel {
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  background: rgba(3, 10, 24, 0.85);
+}
+
+/* Neon vault/privacy/doctor panels */
+[data-theme="cyber"] .vault-panel,
+[data-theme="cyber"] .privacy-panel,
+[data-theme="cyber"] .doctor-panel {
+  border: 1px solid rgba(34, 211, 238, 0.12);
+}
+
+/* Logo gets a neon cyan touch */
+[data-theme="cyber"] .logo {
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   MIDNIGHT — Elegant corporate navy
-   "Premium enterprise tool" — muted glows, thin precise
-   borders, low contrast, refined minimalism.
+   MIDNIGHT — Refined corporate navy, elegant minimal
+   "Premium enterprise tool / Bloomberg terminal" — completely
+   flat design with NO glass, NO blur, NO glows. Ultra-thin
+   precise borders, low contrast, clean lines. Feels like a
+   serious, expensive business application.
    ══════════════════════════════════════════════════════════════ */
-/* Subtle blue avatar glow — muted and refined */
+/* Muted blue avatar glow — barely there */
 [data-theme="midnight"] .msg-avatar {
-  text-shadow: 0 0 16px rgba(59, 130, 246, 0.3), 0 0 32px rgba(59, 130, 246, 0.1);
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
 }
 
-/* Refined assistant message border — thin, subtle */
+/* Flat assistant messages — thin border, no shadow, no blur */
 [data-theme="midnight"] .msg-assistant {
-  border-color: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.06);
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
+/* Flat user messages — even thinner border */
 [data-theme="midnight"] .msg-user {
-  border-color: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.06);
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
-/* Muted professional dot glow */
+/* Barely-there dot — professional, not flashy */
 [data-theme="midnight"] .dot {
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.15);
 }
 
+/* Clean status pill */
 [data-theme="midnight"] .status-pill {
-  border-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.08);
 }
 
-/* Thin header border */
+/* Thin header separator — clean line, no glow */
 [data-theme="midnight"] .header {
-  border-bottom-color: rgba(59, 130, 246, 0.06);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.05);
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
+/* Clean sidebar separator */
 [data-theme="midnight"] .sidebar {
-  border-right-color: rgba(59, 130, 246, 0.04);
+  border-right: 1px solid rgba(59, 130, 246, 0.03);
+  box-shadow: none !important;
+  background-image: none !important;
 }
 
+/* Clean theme switcher */
 [data-theme="midnight"] .theme-switcher {
-  border-color: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.05);
 }
 
-/* Refined input focus */
+/* Clean input bar — just a line */
+[data-theme="midnight"] .input-bar {
+  border-top: 1px solid rgba(59, 130, 246, 0.04);
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Subtle input focus — clean ring, no glow */
 [data-theme="midnight"] .input-field:focus {
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1);
+}
+
+/* Clean footer */
+[data-theme="midnight"] .footer {
+  border-top: 1px solid rgba(59, 130, 246, 0.03);
+  backdrop-filter: none !important;
+}
+
+/* Clean settings panel */
+[data-theme="midnight"] .settings-panel {
+  border: 1px solid rgba(59, 130, 246, 0.04);
+  box-shadow: none !important;
+}
+
+/* Subtle vault/privacy/doctor panels */
+[data-theme="midnight"] .vault-panel,
+[data-theme="midnight"] .privacy-panel,
+[data-theme="midnight"] .doctor-panel {
+  border: 1px solid rgba(59, 130, 246, 0.04);
+}
+
+/* Clean flat send button hover — minimal lift */
+[data-theme="midnight"] .btn-send:hover:not(:disabled) {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* ── Theme Switcher ────────────────────────────────────────── */
