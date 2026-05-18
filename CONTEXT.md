@@ -1,8 +1,8 @@
 # Overmind — Project Context
 
-**Version:** 4.0.0
+**Version:** 4.1.0
 **Author:** Overmind
-**Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, and first-run wizard.
+**Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
 ---
 
@@ -23,8 +23,8 @@
 │                Renderer (Vite + React)               │
 │                                                     │
 │  - src/main.tsx  →  mounts <App />                  │
-│  - src/App.tsx   →  main component (~1850 lines)    │
-│  - src/App.css   →  styles (~1064 lines)             │
+│  - src/App.tsx   →  main component (~2792 lines)    │
+│  - src/App.css   →  styles (~2286 lines)             │
 │  - src/index.css →  CSS variables + global reset     │
 └─────────────────────────────────────────────────────┘
 ```
@@ -46,22 +46,31 @@ Overmind/
 ├── vite.config.ts             # Vite dev server config
 ├── api_keys.env               # Auto-detected env keys (gitignored)
 ├── api_keys.env.example       # Example env file
+├── CONTEXT.md                 # This file — project context
 ├── assets/                    # Icons, logos
 │   ├── icon.ico
 │   ├── icon.png
-│   ├── overmind.png
 │   └── ...
 ├── public/                    # Static assets
 └── src/
     ├── main.tsx               # React entry point
-    ├── App.tsx                # Main component (~1850 lines)
-    ├── App.css                # Main stylesheet (~1064 lines)
-    ├── index.css              # CSS variables, global reset
+    ├── App.tsx                # Main component (~2792 lines)
+    ├── App.css                # Main stylesheet (~2286 lines)
+    ├── index.css              # CSS variables, global reset, 5 themes
     ├── vite-env.d.ts          # Vite type declarations
+    ├── agent/
+    │   ├── agentLoop.ts       # AI sendMessage / callAI logic
+    │   ├── agentTools.ts      # Tool definitions (browser, privacy, folders, doctor)
+    │   ├── doctorTools.ts     # System Doctor diagnostic chains
+    │   ├── systemPrompt.ts    # System prompt builder
+    │   └── toolParser.ts      # Tool call parsing from AI output
     ├── components/            # (empty — all in App.tsx)
     ├── hooks/                 # (empty)
-    ├── types/                 # (empty)
-    └── utils/                 # (empty)
+    ├── types/
+    │   └── vault.ts           # Vault type definitions
+    └── utils/
+        ├── csvParser.ts       # CSV/JSON import for Vault secrets
+        └── vaultTools.ts      # Vault encryption/decryption utilities
 ```
 
 ---
@@ -98,3 +107,85 @@ Overmind/
 | `openInExplorer(folderPath)` | `folder:openInExplorer` | `boolean` |
 | `addWatched(folderPath)` | `folder:addWatched` | `boolean` |
 | `getWatched()` | `folder:getWatched` | `string[]` |
+
+### 3.3 System API (`window.systemAPI`)
+
+| Method | IPC Channel | Returns |
+|--------|------------|---------|
+| `getInfo()` | `system:info` | `SystemInfo` — OS, CPU, RAM, disk |
+| `ollamaStatus()` | `system:ollamaStatus` | `{ running: boolean, version?: string }` |
+| `startOllama()` | `system:startOllama` | `boolean` |
+| `execCommand(command)` | `system:exec` | `{ stdout, stderr }` |
+
+### 3.4 Setup API (`window.setupAPI`)
+
+| Method | IPC Channel | Returns |
+|--------|------------|---------|
+| `installOllama()` | `setup:installOllama` | `boolean` |
+| `pullModel(modelName)` | `setup:pullModel` | `AsyncIterable<string>` — progress lines |
+| `detectOllama()` | `setup:detectOllama` | `{ installed: boolean, running: boolean, version?: string }` |
+| `getEnvKeys()` | `setup:getEnvKeys` | `Record<string, string>` — from api_keys.env |
+
+### 3.5 Privacy API (`window.privacyAPI`)
+
+| Method | IPC Channel | Returns |
+|--------|------------|---------|
+| `runFullScan()` | `privacy:fullScan` | `PrivacySummaryResult` |
+| `executeAction(actionId)` | `privacy:executeAction` | `boolean` |
+
+### 3.6 Credential API (`window.credentialAPI`)
+
+| Method | IPC Channel | Returns |
+|--------|------------|---------|
+| `store(key, value)` | `credential:store` | `boolean` |
+| `retrieve(key)` | `credential:retrieve` | `string \| null` |
+| `deleteCred(key)` | `credential:delete` | `boolean` |
+
+### 3.7 Browser Bridge API (`window.browserBridgeAPI`)
+
+| Method | IPC Channel | Returns |
+|--------|------------|---------|
+| `send(action)` | `browser-bridge:send` | `boolean` |
+| `onCommand(callback)` | `browser-bridge:command` | `void` — listener |
+| `removeCommandListener()` | — | `void` |
+
+---
+
+## 4. Themes
+
+Overmind has a 5-theme system controlled by the `data-theme` attribute on `<html>`:
+
+| Theme | `data-theme` | Background | Accent | User Msg Color |
+|-------|-------------|-----------|--------|----------------|
+| Default (dark) | `dark` | `#07080e` | `#6366f1` (indigo) | `#6366f1` |
+| Midnight | `midnight` | `#020308` | `#3b82f6` (electric blue) | `#3b82f6` |
+| Obsidian | `obsidian` | `#050308` | `#d946ef` (magenta) | `#14b8a6` (teal) |
+| Cyber | `cyber` | `#000510` | `#22d3ee` (neon cyan) | `#a78bfa` (purple) |
+| Light | `light` | `#f2f2f7` | `#6366f1` (indigo) | `#6366f1` |
+
+**CSS variables defined per theme:** `--bg`, `--surface`, `--surface-soft`, `--border`, `--text`, `--text-muted`, `--accent`, `--accent-soft`, `--accent-glow`, `--danger`, `--danger-soft`, `--user-color`, `--user-soft`, `--highlight`, `--glass-bg`, `--glass-border`, `--bg-gradient`, `--header-bg`, `--scroll-thumb`, `--scroll-track`, `--sidebar-bg`, `--settings-bg`, `--settings-border`, `--font-mono`
+
+Theme is persisted via `electron-store` under key `theme`. Switching is instant via CSS `[data-theme]` selectors with `transition: background 0.25s ease, color 0.25s ease`.
+
+---
+
+## 5. Recent Commits (Session History)
+
+| Date | Commit | Message |
+|------|--------|---------|
+| 2026-05-17 | `4ae2fbe` | `ui: multi-theme system with Obsidian (magenta/teal) + 4 others` |
+| 2026-05-17 | `1dc268d` | `feat: first-run experience with welcome onboarding` |
+| 2026-05-17 | `7f4cd75` | `ui: remove redundant Vault Provider dropdown` |
+| 2026-05-17 | `1f4e77e` | `ui: premium polish pass - modern dark theme for Overmind` |
+| 2026-05-17 | `0339e80` | `Rebrand: Final LOCKBOX → Overmind cleanup pass` |
+| 2026-05-17 | `a90f15b` | `Rebrand: LOCKBOX → Overmind` |
+
+---
+
+## 6. Known Issues / TODOs
+
+- **`electron-main.cjs:89`** — Store name still `'lockbox-settings'`, should be `'overmind-settings'` (missed during rebrand cleanup)
+- **`src/App.tsx`** — All UI in one file (~2792 lines). Could benefit from component extraction (VaultSection, SettingsPanel, ChatArea, SetupWizard, PrivacySentinel, SystemDoctor, WelcomeOverlay)
+- **`src/hooks/`** and **`src/components/`** — Empty directories; no extracted hooks or components yet
+- **`src/agent/agentLoop.ts:38`** — Inline `CLOUD_MODELS` map in App.tsx duplicates the one in agentLoop.ts
+- **Ollama auto-start** — On first run, if Ollama is installed but not running, auto-start it instead of just showing "offline" state

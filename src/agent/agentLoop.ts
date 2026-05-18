@@ -58,12 +58,23 @@ export async function callAI(
 
   const systemMsg: Message = { role: 'system', content: sysPrompt }
 
+  const isQuantized = modelName.includes('-q4') || modelName.includes('-q5') || modelName.includes('-q8') || modelName.includes('-Q4') || modelName.includes('-Q5') || modelName.includes('-Q8')
+
   if (provider === 'ollama') {
     const host = ollamaHost || 'http://localhost:11434'
     const res = await fetch(`${host}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modelName, messages: [systemMsg, ...msgs], stream: false }),
+      body: JSON.stringify({
+        model: modelName,
+        messages: [systemMsg, ...msgs],
+        stream: false,
+        temperature: 0.3,
+        options: {
+          num_predict: 8192,
+          num_ctx: 8192,
+        },
+      }),
     })
     if (!res.ok) {
       const errText = await res.text()
@@ -78,7 +89,12 @@ export async function callAI(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model: modelName, messages: [systemMsg, ...msgs] }),
+      body: JSON.stringify({
+        model: modelName,
+        messages: [systemMsg, ...msgs],
+        temperature: 0.3,
+        max_tokens: 8192,
+      }),
     })
     if (!res.ok) {
       const errText = await res.text()

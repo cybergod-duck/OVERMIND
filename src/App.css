@@ -854,6 +854,16 @@
   animation: thinking-pulse 1.4s ease-in-out infinite;
 }
 
+.thinking-perf {
+  font-size: 10px;
+  color: #7b8094;
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
 @keyframes thinking-pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
@@ -991,6 +1001,23 @@
 
 .footer-version {
   color: #55596c;
+}
+
+.footer-optimized-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+  padding: 0 5px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #b8860b;
+  background: rgba(184, 134, 11, 0.12);
+  border: 1px solid rgba(184, 134, 11, 0.25);
+  border-radius: 3px;
+  line-height: 14px;
+  text-transform: uppercase;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────── */

@@ -537,6 +537,22 @@ function App() {
   const csvInputRef = useRef<HTMLInputElement>(null)
   const setupLogRef = useRef<HTMLDivElement>(null)
 
+  // ── Performance indicator state ────────────────────────────────
+  const thinkingStartRef = useRef<number>(0)
+  const [elapsedTime, setElapsedTime] = useState(0)
+  useEffect(() => {
+    if (loading) {
+      thinkingStartRef.current = Date.now()
+      setElapsedTime(0)
+      const interval = setInterval(() => {
+        setElapsedTime(Date.now() - thinkingStartRef.current)
+      }, 200)
+      return () => clearInterval(interval)
+    } else {
+      setElapsedTime(0)
+    }
+  }, [loading])
+
   // ── Load settings from electron-store on mount ─────────────
   useEffect(() => {
     if (!window.settingsAPI) return
@@ -654,7 +670,11 @@ function App() {
 
     // Priority 1: Ollama if locally available (no API key needed)
     if (localModels.length > 0) {
-      setSelectedModel(`ollama:${localModels[0]}`)
+      // Prefer quantized models (faster, lower resource usage)
+      const quantized = localModels.find(
+        m => /-q[4-8]/.test(m) || /-Q[4-8]/.test(m) || /qwen.*14b.*q[45]/i.test(m)
+      )
+      setSelectedModel(`ollama:${quantized || localModels[0]}`)
       return
     }
 
@@ -1493,8 +1513,11 @@ function App() {
 
   // ── Render ─────────────────────────────────────────────────
 
+  const isQuantizedModel = selectedModel
+    ? /-q[4-8]/.test(selectedModel) || /-Q[4-8]/.test(selectedModel) || /qwen.*14b.*q[45]/i.test(selectedModel)
+    : false
   const displayLabel = selectedModel
-    ? selectedModel.replace(':', ' · ')
+    ? `${isQuantizedModel ? '⚡ ' : ''}${selectedModel.replace(':', ' · ')}${isQuantizedModel ? ' (quantized)' : ''}`
     : 'NO MODEL SELECTED'
 
   // Helper: map setupPhase to step index for the progress indicator
@@ -1590,16 +1613,16 @@ function App() {
 
             {setupPhase === 'model-prompt' && (
               <div className="setup-prompt">
-                <div className="setup-prompt-text">Pick a starter model to download (recommended: <strong>qwen3:4b</strong> — fast & lightweight):</div>
+                <div className="setup-prompt-text">Pick a starter model to download. Quantized models offer the best balance of speed & quality:</div>
                 <div className="setup-prompt-buttons">
-                  <button className="setup-btn setup-btn-primary recommended" onClick={() => handleSelectModel('qwen3:4b')}>
-                    <span className="setup-btn-model-icon">★</span> qwen3:4b <span className="setup-btn-badge">RECOMMENDED</span>
+                  <button className="setup-btn setup-btn-primary recommended" onClick={() => handleSelectModel('qwen3:14b-q4')}>
+                    <span className="setup-btn-model-icon">⚡</span> qwen3:14b-q4 <span className="setup-btn-badge">RECOMMENDED ⚡FAST</span>
+                  </button>
+                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('qwen3:14b')}>
+                    <span className="setup-btn-model-icon">▲</span> qwen3:14b <span className="setup-btn-badge">SMARTER • SLOWER</span>
                   </button>
                   <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('qwen3:8b')}>
-                    <span className="setup-btn-model-icon">▲</span> qwen3:8b <span className="setup-btn-badge">MORE CAPABLE</span>
-                  </button>
-                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('llama3.2:3b')}>
-                    <span className="setup-btn-model-icon">▲</span> llama3.2:3b
+                    <span className="setup-btn-model-icon">▲</span> qwen3:8b <span className="setup-btn-badge">LIGHTWEIGHT</span>
                   </button>
                   <button className="setup-btn setup-btn-secondary" onClick={handleSkipModel}>
                     SKIP FOR NOW
@@ -1766,11 +1789,14 @@ function App() {
                 {localModels.length === 0 ? (
                   <option disabled>(no local models found)</option>
                 ) : (
-                  localModels.map(name => (
-                    <option key={`ollama-${name}`} value={`ollama:${name}`}>
-                      {name}
-                    </option>
-                  ))
+                  localModels.map(name => {
+                    const isQuantized = /-q[4-8]/.test(name) || /-Q[4-8]/.test(name) || /qwen.*14b.*q[45]/i.test(name)
+                    return (
+                      <option key={`ollama-${name}`} value={`ollama:${name}`}>
+                        {isQuantized ? `⚡ ${name} ★ RECOMMENDED` : name}
+                      </option>
+                    )
+                  })
                 )}
               </optgroup>
             </select>
@@ -2705,6 +2731,9 @@ function App() {
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
                     <span className="thinking-label">Thinking</span>
+                    <span className="thinking-perf">
+                      {isQuantizedModel ? '⚡' : ''} {(elapsedTime / 1000).toFixed(1)}s
+                    </span>
                   </div>
                 </div>
               </div>
@@ -2743,6 +2772,7 @@ function App() {
       <footer className="footer">
         <div className="footer-status">
           <span className="dot" /> SYSTEM OPERATIONAL
+          {isQuantizedModel && <span className="footer-optimized-badge">⚡ OPTIMIZED</span>}
         </div>
         <div className="footer-events">
           {events.join(' | ') || displayLabel}
