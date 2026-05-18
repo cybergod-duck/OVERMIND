@@ -511,7 +511,7 @@ function App() {
   const [autoDiagnostics, setAutoDiagnostics]       = useState(true)
   const [autoAnalyzeWatched, setAutoAnalyzeWatched] = useState(true)
   const [maxContextMessages, setMaxContextMessages]  = useState(50)
-  const [settingsTheme, setSettingsTheme]            = useState('dark')
+  const [settingsTheme, setSettingsTheme]            = useState('default')
 
   // ── Watched folders ────────────────────────────────────────
   const [watchedFolders, setWatchedFolders] = useState<string[]>([])
@@ -1738,6 +1738,48 @@ function App() {
           </div>
         </div>
         <div className="header-actions">
+          <div className="theme-switcher" title="Theme">
+            <button
+              className={`theme-btn${settingsTheme === 'default' ? ' active' : ''}`}
+              onClick={() => { setSettingsTheme('default'); persistSetting('theme', 'default') }}
+              title="Default — Balanced dark"
+              aria-label="Default theme"
+            >
+              <span className="theme-btn-swatch theme-btn-swatch--default" />
+            </button>
+            <button
+              className={`theme-btn${settingsTheme === 'clean' ? ' active' : ''}`}
+              onClick={() => { setSettingsTheme('clean'); persistSetting('theme', 'clean') }}
+              title="Clean — Minimal light"
+              aria-label="Clean theme"
+            >
+              <span className="theme-btn-swatch theme-btn-swatch--clean" />
+            </button>
+            <button
+              className={`theme-btn${settingsTheme === 'obsidian' ? ' active' : ''}`}
+              onClick={() => { setSettingsTheme('obsidian'); persistSetting('theme', 'obsidian') }}
+              title="Obsidian — Magenta & teal"
+              aria-label="Obsidian theme"
+            >
+              <span className="theme-btn-swatch theme-btn-swatch--obsidian" />
+            </button>
+            <button
+              className={`theme-btn${settingsTheme === 'cyber' ? ' active' : ''}`}
+              onClick={() => { setSettingsTheme('cyber'); persistSetting('theme', 'cyber') }}
+              title="Cyber — Neon high-contrast"
+              aria-label="Cyber theme"
+            >
+              <span className="theme-btn-swatch theme-btn-swatch--cyber" />
+            </button>
+            <button
+              className={`theme-btn${settingsTheme === 'midnight' ? ' active' : ''}`}
+              onClick={() => { setSettingsTheme('midnight'); persistSetting('theme', 'midnight') }}
+              title="Midnight — Deep navy"
+              aria-label="Midnight theme"
+            >
+              <span className="theme-btn-swatch theme-btn-swatch--midnight" />
+            </button>
+          </div>
           <button
             className={`btn-settings${showSettings ? ' active' : ''}`}
             onClick={() => setShowSettings(!showSettings)}
@@ -1915,11 +1957,11 @@ function App() {
                   persistSetting('theme', e.target.value)
                 }}
               >
-                <option value="dark">Default</option>
-                <option value="midnight">Midnight</option>
-                <option value="obsidian">Obsidian</option>
-                <option value="cyber">Cyber</option>
-                <option value="light">Light</option>
+                <option value="default">Default — Balanced dark</option>
+                <option value="clean">Clean — Minimal light</option>
+                <option value="obsidian">Obsidian — Magenta & teal</option>
+                <option value="cyber">Cyber — Neon high-contrast</option>
+                <option value="midnight">Midnight — Deep navy</option>
               </select>
 
               {/* ── RE-RUN SETUP ──────────────────────────── */}
