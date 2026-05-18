@@ -961,14 +961,16 @@ function App() {
 
       // Value-prefix → provider detection for bare-value files
       const VALUE_PREFIXES: [RegExp, string, string][] = [
-        [/^sk-ant-/,        'anthropic',  'ANTHROPIC_API_KEY'],
-        [/^sk-or-/,         'openrouter', 'OPENROUTER_API_KEY'],
-        [/^sk-proj-|^sk-/,  'openrouter', 'OPENAI_API_KEY'],
-        [/^AIzaSy/,         'google',     'GOOGLE_API_KEY'],
-        [/^gsk_/,           'groq',       'GROQ_API_KEY'],
-        [/^xai-/,           'xai',        'XAI_API_KEY'],
-        [/^ds-/,            'deepseek',   'DEEPSEEK_API_KEY'],
-        [/^ms-/,            'moonshot',   'MOONSHOT_API_KEY'],
+        [/^sk-ant-/,        'anthropic',  'Anthropic'],
+        [/^sk-or-/,         'openrouter', 'OpenRouter'],
+        [/^sk-proj-/,       'openrouter', 'OpenAI'],
+        [/^sk-[a-f0-9]{32}$/, 'deepseek', 'DeepSeek'],    // DeepSeek keys are 32-char hex strings
+        [/^AIzaSy/,         'google',     'Google'],
+        [/^gsk_/,           'groq',       'Groq'],
+        [/^xai-/,           'xai',        'XAI'],
+        [/^ds-/,            'deepseek',   'DeepSeek'],
+        [/^ms-/,            'moonshot',   'Moonshot'],
+        [/^sk-/,            'openrouter', 'OpenAI'],
       ]
 
       for (const line of lines) {
@@ -2067,7 +2069,7 @@ function App() {
                   <div className="vault-item-header">
                     <span className="vault-label">{s.label}</span>
                     <span className="vault-type">
-                      {s.type.replace('_', ' ')}
+                      {s.type !== 'api_key' && s.type.replace('_', ' ')}
                     </span>
                   </div>
                   <div className="vault-value">
