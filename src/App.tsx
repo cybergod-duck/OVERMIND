@@ -456,15 +456,19 @@ const KEY_PATTERNS: [RegExp, string | undefined, string][] = [
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function generateLabel(name: string): string {
-  return (
-    name
-      .replace(/_/g, ' ')
-      .replace(/[_-][a-z]/g, m => m.toUpperCase())
-      .replace(/^[A-Z]+/, m => m)
-      .replace(/Key|Api|Secret|Token|Pass|Password/i, '')
-      .trim() || name
-  )
+function generateLabel(key: string): string {
+  // Strip common suffixes before display
+  const cleaned = key
+    .replace(/_API_KEY$/i, '')
+    .replace(/_KEY$/i, '')
+    .replace(/_SECRET$/i, '')
+    .replace(/_TOKEN$/i, '')
+    .replace(/_ACCESS_KEY$/i, '')
+  return cleaned
+    .split('_')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+    .trim() || key
 }
 
 // ── Component ──────────────────────────────────────────────────

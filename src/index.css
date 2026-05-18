@@ -128,11 +128,27 @@ body {
 }
 
 /* ── Overrides for built-in elements to prevent white backgrounds ────────────────── */
-input, select, textarea {
-  background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
+input, textarea {
+  background: #181a24 !important;
+  border: 1px solid #2f3344 !important;
   color: var(--text) !important;
-  font-family: var(--font-mono) !important;
+}
+
+select {
+  background: #181a24 !important;
+  border: 1px solid #2f3344 !important;
+  color: var(--text) !important;
+  color-scheme: dark;
+}
+
+select option {
+  background: #181a24;
+  color: var(--text);
+}
+
+select optgroup {
+  background: #0d0e17;
+  color: var(--accent);
 }
 
 input:focus, select:focus, textarea:focus {
