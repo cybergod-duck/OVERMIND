@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import './App.css'
-import { Eye, Copy, Trash2, Upload, RefreshCw, Settings, Activity, FolderOpen, ExternalLink, Plus, X, Terminal, ChevronDown, ChevronRight, Shield, Sparkles, Send } from 'lucide-react'
+import { Eye, Copy, Trash2, Upload, RefreshCw, Settings, Activity, FolderOpen, ExternalLink, Plus, X, Terminal, ChevronDown, ChevronRight, Shield, Sparkles, Send, Star, Search, Cpu, Edit, Check } from 'lucide-react'
 import { importCsv, type CsvImportResult } from './utils/csvParser'
 import {
   scanDuplicates,
@@ -132,6 +132,7 @@ declare global {
       writeEnv:   (entries: Record<string,string>) => Promise<any>
       killPort:   (port: number) => Promise<any>
       runCommand: (cmd: string) => Promise<any>
+      proxyFetch: (url: string, options: any) => Promise<any>
     }
     settingsAPI: {
       get:    (key: string) => Promise<any>
@@ -371,67 +372,19 @@ const PROVIDER_CONFIG: Record<string, ProviderInfo> = {
   moonshot: { label: 'MOONSHOT', color: '#1a6b4a', baseUrl: 'https://api.moonshot.cn/v1' },
 }
 
-// OpenRouter models with their route IDs and display labels
+// OpenRouter models fallback list (minimal)
 const OPENROUTER_MODELS: { route: string; label: string }[] = [
-  { route: 'openai/gpt-4.1-mini', label: 'gpt-4.1-mini' },
-  { route: 'openai/gpt-4o', label: 'gpt-4o' },
-  { route: 'minimax/minimax-m2.5', label: 'MiniMax-M2.5' },
-  { route: 'minimax/minimax-m2.7', label: 'MiniMax-M2.7' },
-  { route: 'z-ai/glm-5.1', label: 'GLM-5.1' },
-  { route: 'z-ai/glm-4.6v', label: 'GLM-4.6V' },
-  { route: 'deepseek/deepseek-r1', label: 'DeepSeek-R1' },
-  { route: 'deepseek/deepseek-r1', label: 'DeepSeek-R1' },
+  { route: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
 ]
 
 // Hardcoded cloud provider models — always visible in the dropdown
-// Each list follows the ≤8 rule: if >8 exist, show the best 8 (chat, reasoning, long-context, code/vision)
 const CLOUD_MODELS: Record<string, string[]> = {
-  anthropic: [
-    'claude-sonnet-4-20250514',
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022',
-    'claude-opus-4-20250514',
-    'claude-3-opus-20240229',
-    'claude-3-haiku-20240307',
-  ],
-  google: [
-    'gemini-2.5-pro-exp-03-25',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite-001',
-    'gemini-1.5-pro-001',
-    'gemini-1.5-flash-001',
-    'gemini-1.5-flash-8b-001',
-  ],
-  xai: [
-    'grok-3-mini',
-    'grok-3',
-    'grok-4.1-mini',
-    'grok-4.1-fast',
-    'grok-4.3',
-    'grok-4.20',
-  ],
-  deepseek: [
-    'deepseek-chat',
-    'deepseek-reasoner',
-  ],
-  groq: [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768',
-    'gemma2-9b-it',
-    'deepseek-r1-distill-llama-70b',
-    'llama-3.2-90b-vision-preview',
-    'llama-3.2-11b-vision-preview',
-    'llama-3.2-3b-preview',
-  ],
-  moonshot: [
-    'moonshot-v1-8k',
-    'moonshot-v1-32k',
-    'moonshot-v1-128k',
-    'kimi-latest',
-    'kimi-k2.5',
-    'moonlight-16b-a3b-instruct',
-  ],
+  anthropic: [],
+  google: [],
+  xai: [],
+  deepseek: [],
+  groq: [],
+  moonshot: [],
 }
 
 // Provider auto-detection from env key names
@@ -486,6 +439,8 @@ function App() {
   const [events, setEvents] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [newSecret, setNewSecret] = useState({ label: '', value: '', provider: '', type: 'api_key' as Secret['type'] })
+  const [editingSecretId, setEditingSecretId] = useState<string | null>(null)
+  const [editSecretData, setEditSecretData] = useState<{ label: string; value: string; type: Secret['type']; provider?: string }>({ label: '', value: '', type: 'api_key' })
   const [peeked, setPeeked] = useState<Set<string>>(new Set())
   const [vaultFilter, setVaultFilter] = useState<'all' | Secret['type']>('all')
   const [importStatus, setImportStatus] = useState<{ msg: string; type: 'success' | 'error' | '' }>({ msg: '', type: '' })
@@ -496,6 +451,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [customPrompt, setCustomPrompt] = useState(() => localStorage.getItem('overmind_v4_sysprompt') || '')
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({})
+  const [providerFetchErrors, setProviderFetchErrors] = useState<Record<string, string>>({})
   const [healthData, setHealthData]       = useState<any>(null)
   const [doctorLog, setDoctorLog]         = useState<string[]>([])
   const [pullModelInput, setPullModelInput] = useState('')
@@ -539,6 +495,16 @@ function App() {
   const [setupApiKeyCount, setSetupApiKeyCount] = useState(0)
   const [showWelcome, setShowWelcome] = useState(false)
   const [browserStatus, setBrowserStatus] = useState<{ connected: boolean; clients: number } | null>(null)
+  const [favoriteModels, setFavoriteModels] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('overmind_v4_favorites')
+    // Default favorites if none saved
+    return saved ? new Set(JSON.parse(saved)) : new Set([
+      'openrouter:openai/gpt-4o-mini',
+      'anthropic:claude-3-5-sonnet-20241022'
+    ])
+  })
+  const [showModelManager, setShowModelManager] = useState(false)
+  const [fetchingModels, setFetchingModels] = useState(false)
 
   const chatRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -719,6 +685,20 @@ function App() {
     localStorage.setItem('overmind_v4_sysprompt', customPrompt)
   }, [customPrompt])
 
+  // Persist favorite models
+  useEffect(() => {
+    localStorage.setItem('overmind_v4_favorites', JSON.stringify(Array.from(favoriteModels)))
+  }, [favoriteModels])
+
+  const toggleFavorite = (modelId: string) => {
+    setFavoriteModels(prev => {
+      const next = new Set(prev)
+      if (next.has(modelId)) next.delete(modelId)
+      else next.add(modelId)
+      return next
+    })
+  }
+
   // Auto-scroll chat
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -738,62 +718,118 @@ function App() {
 
   // ── Live model discovery ──────────────────────────────────
 
-  // Fetch available models from each provider's /v1/models (or equivalent) endpoint
-  // Uses the vault API key for authorization. Falls back to hardcoded CLOUD_MODELS on failure.
-  useEffect(() => {
-    const getKey = (label: string) => secrets.find(s => s.label === label)?.value || ''
-
+  const fetchLiveModels = async () => {
+    setFetchingModels(true)
+    const getKey = (id: string) => {
+      // 1. Try to find by provider field (exact match)
+      let s = secrets.find(s => s.provider === id && s.type === 'api_key')
+      if (s) return s.value
+      
+      // 2. Try to find by label containing the provider name
+      s = secrets.find(s => 
+        s.type === 'api_key' && 
+        (s.label.toUpperCase().includes(id.toUpperCase()) || 
+         (id === 'xai' && s.label.toUpperCase().includes('GROK')))
+      )
+      return s?.value || ''
+    }
     const fetches: Promise<void>[] = []
 
+    const trackFetch = (name: string, providerKey: string, url: string, options: any, setter: (data: any) => void) => {
+      const p = window.systemAPI?.proxyFetch 
+        ? window.systemAPI.proxyFetch(url, options)
+        : fetch(url, options).then(async res => ({ ok: res.ok, status: res.status, data: await res.json() }))
+
+      fetches.push(
+        p.then(res => {
+          if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
+          setter(res.data)
+          setProviderFetchErrors(prev => {
+            const next = { ...prev }
+            delete next[providerKey]
+            return next
+          })
+          console.log(`[MODELS] ${name} updated`)
+        })
+        .catch(err => {
+          console.error(`[MODELS] ${name} fetch failed:`, err)
+          setProviderFetchErrors(prev => ({ ...prev, [providerKey]: err.message }))
+          setDoctorLog(prev => [`[ERR] ${name} models fetch failed: ${err.message}`, ...prev].slice(0, 50))
+        })
+      )
+    }
+
     // xAI / Grok
-    const grokKey = getKey('GROK_API_KEY')
-    if (grokKey) fetches.push(
-      fetch('https://api.x.ai/v1/models', { headers: { Authorization: `Bearer ${grokKey}` } })
-        .then(r => r.json())
-        .then(d => setProviderModels(prev => ({ ...prev, xai: d.data?.map((m: any) => m.id) ?? [] })))
-        .catch(() => {})
+    const grokKey = getKey('GROK') || getKey('XAI')
+    if (grokKey) trackFetch('XAI', 'xai',
+      'https://api.x.ai/v1/models', 
+      { headers: { Authorization: `Bearer ${grokKey}` } },
+      (d) => setProviderModels(prev => ({ ...prev, xai: d.data?.map((m: any) => m.id) ?? [] }))
+    )
+
+    // Anthropic
+    const anthropicKey = getKey('ANTHROPIC')
+    if (anthropicKey) trackFetch('Anthropic', 'anthropic',
+      'https://api.anthropic.com/v1/models', 
+      { 
+        headers: { 
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01'
+        } 
+      },
+      (d) => setProviderModels(prev => ({ ...prev, anthropic: d.data?.map((m: any) => m.id) ?? [] }))
     )
 
     // Moonshot
-    const moonshotKey = getKey('MOONSHOT_API_KEY')
-    if (moonshotKey) fetches.push(
-      fetch('https://api.moonshot.cn/v1/models', { headers: { Authorization: `Bearer ${moonshotKey}` } })
-        .then(r => r.json())
-        .then(d => setProviderModels(prev => ({ ...prev, moonshot: d.data?.map((m: any) => m.id) ?? [] })))
-        .catch(() => {})
+    const moonshotKey = getKey('MOONSHOT')
+    if (moonshotKey) trackFetch('Moonshot', 'moonshot',
+      'https://api.moonshot.cn/v1/models', 
+      { headers: { Authorization: `Bearer ${moonshotKey}` } },
+      (d) => setProviderModels(prev => ({ ...prev, moonshot: d.data?.map((m: any) => m.id) ?? [] }))
     )
 
     // DeepSeek
-    const deepseekKey = getKey('DEEPSEEK_API_KEY')
-    if (deepseekKey) fetches.push(
-      fetch('https://api.deepseek.com/v1/models', { headers: { Authorization: `Bearer ${deepseekKey}` } })
-        .then(r => r.json())
-        .then(d => setProviderModels(prev => ({ ...prev, deepseek: d.data?.map((m: any) => m.id) ?? [] })))
-        .catch(() => {})
+    const deepseekKey = getKey('DEEPSEEK')
+    if (deepseekKey) trackFetch('DeepSeek', 'deepseek',
+      'https://api.deepseek.com/v1/models', 
+      { headers: { Authorization: `Bearer ${deepseekKey}` } },
+      (d) => setProviderModels(prev => ({ ...prev, deepseek: d.data?.map((m: any) => m.id) ?? [] }))
     )
 
     // Groq
-    const groqKey = getKey('GROQ_API_KEY')
-    if (groqKey) fetches.push(
-      fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${groqKey}` } })
-        .then(r => r.json())
-        .then(d => setProviderModels(prev => ({ ...prev, groq: d.data?.map((m: any) => m.id) ?? [] })))
-        .catch(() => {})
+    const groqKey = getKey('GROQ')
+    if (groqKey) trackFetch('Groq', 'groq',
+      'https://api.groq.com/openai/v1/models', 
+      { headers: { Authorization: `Bearer ${groqKey}` } },
+      (d) => setProviderModels(prev => ({ ...prev, groq: d.data?.map((m: any) => m.id) ?? [] }))
     )
 
-    // OpenRouter (cap at 8)
-    const orKey = getKey('OPENROUTER_API_KEY')
-    if (orKey) fetches.push(
-      fetch('https://openrouter.ai/api/v1/models', { headers: { Authorization: `Bearer ${orKey}` } })
-        .then(r => r.json())
-        .then(d => setProviderModels(prev => ({ ...prev, openrouter: d.data?.map((m: any) => m.id).slice(0, 8) ?? [] })))
-        .catch(() => {})
+    // Google / Gemini
+    const googleKey = getKey('GOOGLE')
+    if (googleKey) trackFetch('Google', 'google',
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${googleKey}`,
+      {},
+      (d) => setProviderModels(prev => ({ ...prev, google: d.models?.map((m: any) => m.name.replace('models/', '')) ?? [] }))
     )
 
-    // Anthropic — no /v1/models endpoint, keep hardcoded
-    // Google — no simple /v1/models endpoint, keep hardcoded
+    // OpenRouter
+    const orKey = getKey('OPENROUTER')
+    if (orKey) trackFetch('OpenRouter', 'openrouter',
+      'https://openrouter.ai/api/v1/models', 
+      { headers: { Authorization: `Bearer ${orKey}` } },
+      (d) => {
+        if (Array.isArray(d.data)) {
+          setProviderModels(prev => ({ ...prev, openrouter: d.data.map((m: any) => m.id) }))
+        }
+      }
+    )
 
-    Promise.all(fetches)
+    await Promise.all(fetches)
+    setFetchingModels(false)
+  }
+
+  useEffect(() => {
+    fetchLiveModels()
   }, [secrets])
 
   const log = (e: string) => setEvents(prev => [e, ...prev].slice(0, 5))
@@ -934,6 +970,18 @@ function App() {
   const deleteSecret = (id: string) => {
     setSecrets(secrets.filter(s => s.id !== id))
     log('VAULT_DELETE')
+  }
+
+  const startEdit = (s: Secret) => {
+    setEditingSecretId(s.id)
+    setEditSecretData({ label: s.label, value: s.value, type: s.type, provider: s.provider })
+  }
+
+  const saveEdit = () => {
+    if (!editingSecretId) return
+    setSecrets(prev => prev.map(s => s.id === editingSecretId ? { ...s, ...editSecretData } : s))
+    setEditingSecretId(null)
+    log(`VAULT_EDIT: ${editSecretData.label}`)
   }
 
   const copySecret = async (val: string, label: string) => {
@@ -1763,6 +1811,25 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* ── Model Manager Overlay ──────────────────────────────── */}
+      {showModelManager && (
+        <ModelManager
+          onClose={() => setShowModelManager(false)}
+          favoriteModels={favoriteModels}
+          toggleFavorite={toggleFavorite}
+          localModels={localModels}
+          providerModels={providerModels}
+          providerFetchErrors={providerFetchErrors}
+          PROVIDER_CONFIG={PROVIDER_CONFIG}
+          CLOUD_MODELS={CLOUD_MODELS}
+          OPENROUTER_MODELS={OPENROUTER_MODELS}
+          secrets={secrets}
+          onRefresh={fetchLiveModels}
+          fetching={fetchingModels}
+        />
+      )}
+
       <header className="header">
         <div className="header-left">
           <div className="logo-icon">◆</div>
@@ -1820,60 +1887,21 @@ function App() {
             <Settings size={14} />
           </button>
           <div className="model-selector-group">
-            <select
-              className="model-select"
-              value={selectedModel}
-              onChange={e => {
+            <CustomModelSelect
+              selectedModel={selectedModel}
+              setSelectedModel={(m) => {
                 modelUserSelected.current = true
-                setSelectedModel(e.target.value)
+                setSelectedModel(m)
               }}
-            >
-              {/* OpenRouter — live models if fetch succeeded, else hardcoded fallback */}
-              {secrets.some(s => s.type === 'api_key' && s.provider === 'openrouter') && (
-                <optgroup label="OPENROUTER">
-                  {(providerModels['openrouter']
-                    ? providerModels['openrouter']
-                    : OPENROUTER_MODELS.map(m => m.route)
-                  ).slice(0, 8).map(id => (
-                    <option key={`openrouter:${id}`} value={`openrouter:${id}`}>
-                      {id}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-
-              {/* Other cloud provider optgroups — live models ?? hardcoded fallback */}
-              {Object.entries(CLOUD_MODELS)
-                .filter(([provider]) => secrets.some(s => s.type === 'api_key' && s.provider === provider))
-                .map(([provider, models]) => (
-                <optgroup
-                  key={provider}
-                  label={PROVIDER_CONFIG[provider]?.label || provider.toUpperCase()}
-                >
-                  {(providerModels[provider] ?? models).slice(0, 8).map(m => (
-                    <option key={`${provider}:${m}`} value={`${provider}:${m}`}>
-                      {m}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-
-              {/* Ollama section — dynamically fetched */}
-              <optgroup label="OLLAMA">
-                {localModels.length === 0 ? (
-                  <option disabled>(no local models found)</option>
-                ) : (
-                  localModels.map(name => {
-                    const isQuantized = /-q[4-8]/.test(name) || /-Q[4-8]/.test(name) || /qwen.*14b.*q[45]/i.test(name)
-                    return (
-                      <option key={`ollama-${name}`} value={`ollama:${name}`}>
-                        {isQuantized ? `⚡ ${name} ★ RECOMMENDED` : name}
-                      </option>
-                    )
-                  })
-                )}
-              </optgroup>
-            </select>
+              favoriteModels={favoriteModels}
+              localModels={localModels}
+              providerModels={providerModels}
+              PROVIDER_CONFIG={PROVIDER_CONFIG}
+              CLOUD_MODELS={CLOUD_MODELS}
+              OPENROUTER_MODELS={OPENROUTER_MODELS}
+              secrets={secrets}
+              onOpenManager={() => setShowModelManager(true)}
+            />
             <button
               className="btn-refresh"
               onClick={refreshOllama}
@@ -2066,20 +2094,65 @@ function App() {
                       PROVIDER_CONFIG[s.provider || '']?.color || '#444',
                   }}
                 >
-                  <div className="vault-item-header">
-                    <span className="vault-label">{s.label}</span>
-                    <span className="vault-type">
-                      {s.type !== 'api_key' && s.type.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="vault-value">
-                    {peeked.has(s.id) ? s.value : '••••••••'}
-                  </div>
-                  <div className="vault-actions">
-                    <Eye size={14} onClick={() => togglePeek(s.id)} />
-                    <Copy size={14} onClick={() => copySecret(s.value, s.label)} />
-                    <Trash2 size={14} onClick={() => deleteSecret(s.id)} />
-                  </div>
+                  {editingSecretId === s.id ? (
+                    <div className="vault-edit-inline">
+                      <div className="vault-edit-row">
+                        <input
+                          className="vault-input sm"
+                          value={editSecretData.label}
+                          onChange={e => setEditSecretData({ ...editSecretData, label: e.target.value })}
+                          placeholder="Label"
+                          autoFocus
+                        />
+                        <select
+                          className="vault-input sm"
+                          value={editSecretData.type}
+                          onChange={e => setEditSecretData({ ...editSecretData, type: e.target.value as Secret['type'] })}
+                        >
+                          <option value="api_key">API Key</option>
+                          <option value="password">Password</option>
+                          <option value="passcode">Passcode</option>
+                          <option value="note">Note</option>
+                          <option value="id">ID</option>
+                          <option value="token">Token</option>
+                          <option value="bank">Bank</option>
+                        </select>
+                      </div>
+                      <textarea
+                        className="vault-textarea sm"
+                        value={editSecretData.value}
+                        onChange={e => setEditSecretData({ ...editSecretData, value: e.target.value })}
+                        placeholder="Value"
+                        rows={2}
+                      />
+                      <div className="vault-edit-actions">
+                        <button className="btn-edit-save" onClick={saveEdit}>
+                          <Check size={12} /> SAVE
+                        </button>
+                        <button className="btn-edit-cancel" onClick={() => setEditingSecretId(null)}>
+                          <X size={12} /> CANCEL
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="vault-item-header">
+                        <span className="vault-label">{s.label}</span>
+                        <span className="vault-type">
+                          {s.type !== 'api_key' && s.type.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="vault-value">
+                        {peeked.has(s.id) ? s.value : '••••••••'}
+                      </div>
+                      <div className="vault-actions">
+                        <Eye size={14} onClick={() => togglePeek(s.id)} />
+                        <Edit size={14} onClick={() => startEdit(s)} />
+                        <Copy size={14} onClick={() => copySecret(s.value, s.label)} />
+                        <Trash2 size={14} onClick={() => deleteSecret(s.id)} />
+                      </div>
+                    </>
+                  )}
                 </div>
               ))
             })()}
@@ -2877,4 +2950,273 @@ function AnalysisSummaryDisplay({ data }: { data: any }) {
   )
 }
 
+// ── Custom Model Selector ────────────────────────────────────────
+
+interface CustomModelSelectProps {
+  selectedModel: string
+  setSelectedModel: (m: string) => void
+  favoriteModels: Set<string>
+  localModels: string[]
+  providerModels: Record<string, string[]>
+  PROVIDER_CONFIG: Record<string, ProviderInfo>
+  CLOUD_MODELS: Record<string, string[]>
+  OPENROUTER_MODELS: { route: string; label: string }[]
+  secrets: Secret[]
+  onOpenManager: () => void
+}
+
+function CustomModelSelect({
+  selectedModel, setSelectedModel, favoriteModels, localModels, 
+  providerModels, PROVIDER_CONFIG, CLOUD_MODELS, OPENROUTER_MODELS, secrets, onOpenManager
+}: CustomModelSelectProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [])
+
+  const handleSelect = (id: string) => {
+    setSelectedModel(id)
+    setIsOpen(false)
+  }
+
+  const getDisplayLabel = (id: string) => {
+    if (!id) return 'Select Model'
+    const parts = id.split(':')
+    return parts[1] || parts[0]
+  }
+
+  const options: { id: string; provider: string; label: string }[] = []
+  
+  const collect = (id: string, provider: string, label: string) => {
+    if (favoriteModels.has(id) || id === selectedModel) {
+      options.push({ id, provider, label })
+    }
+  }
+
+  localModels.forEach(m => collect(`ollama:${m}`, 'ollama', m))
+  
+  if (secrets.some(s => s.type === 'api_key' && s.provider === 'openrouter')) {
+    (providerModels['openrouter'] || OPENROUTER_MODELS.map(m => m.route)).forEach(id => {
+      collect(`openrouter:${id}`, 'openrouter', id)
+    })
+  }
+
+  Object.entries(CLOUD_MODELS).forEach(([provider, models]) => {
+    if (secrets.some(s => s.type === 'api_key' && s.provider === provider)) {
+      (providerModels[provider] ?? models).forEach(m => {
+        collect(`${provider}:${m}`, provider, m)
+      })
+    }
+  })
+
+  const grouped = options.reduce((acc, opt) => {
+    if (!acc[opt.provider]) acc[opt.provider] = []
+    acc[opt.provider].push(opt)
+    return acc
+  }, {} as Record<string, typeof options>)
+
+  return (
+    <div className="custom-select-container" ref={containerRef}>
+      <button className="model-select-trigger" onClick={() => setIsOpen(!isOpen)}>
+        <span className="selected-model-name">{getDisplayLabel(selectedModel)}</span>
+        <ChevronDown size={12} />
+      </button>
+
+      {isOpen && (
+        <div className="custom-select-dropdown">
+          <div className="custom-select-list">
+            {Object.entries(grouped).map(([provider, opts]) => (
+              <div key={provider} className="custom-select-group">
+                <div className="custom-select-group-title" style={{ color: PROVIDER_CONFIG[provider]?.color }}>
+                  {PROVIDER_CONFIG[provider]?.label || provider.toUpperCase()}
+                </div>
+                {opts.map(opt => (
+                  <div 
+                    key={opt.id} 
+                    className={`custom-select-option ${opt.id === selectedModel ? 'active' : ''}`}
+                    onClick={() => handleSelect(opt.id)}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {options.length === 0 && (
+              <div className="custom-select-empty">No favorites. Click Manage.</div>
+            )}
+          </div>
+          <button className="btn-manage-models" onClick={() => { onOpenManager(); setIsOpen(false); }}>
+            <Settings size={12} /> MANAGE MODELS...
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default App
+
+// ── Model Manager Modal ──────────────────────────────────────────
+
+interface ModelManagerProps {
+  onClose: () => void
+  favoriteModels: Set<string>
+  toggleFavorite: (id: string) => void
+  localModels: string[]
+  providerModels: Record<string, string[]>
+  providerFetchErrors: Record<string, string>
+  PROVIDER_CONFIG: Record<string, ProviderInfo>
+  CLOUD_MODELS: Record<string, string[]>
+  OPENROUTER_MODELS: { route: string; label: string }[]
+  secrets: Secret[]
+  onRefresh: () => void
+  fetching: boolean
+}
+
+function ModelManager({ 
+  onClose, favoriteModels, toggleFavorite, localModels, providerModels, providerFetchErrors,
+  PROVIDER_CONFIG, CLOUD_MODELS, OPENROUTER_MODELS, secrets, onRefresh, fetching 
+}: ModelManagerProps) {
+  const [search, setSearch] = useState('')
+  const [selectedProvider, setSelectedProvider] = useState<string>('ollama')
+
+  const availableProviders = ['ollama', 'openrouter', 'anthropic', 'google', 'xai', 'deepseek', 'groq', 'moonshot']
+
+  const getModelsForProvider = (provider: string) => {
+    const list: { id: string; label: string }[] = []
+    const seen = new Set<string>()
+
+    const add = (id: string, label: string) => {
+      if (seen.has(id)) return
+      seen.add(id)
+      
+      // Formatting for specific models
+      let displayLabel = label
+      if (id.toLowerCase().includes('deepseek-chat')) displayLabel = 'DeepSeek-Chat'
+      if (id.toLowerCase().includes('deepseek-reasoner')) displayLabel = 'DeepSeek-Reasoner'
+      if (id.toLowerCase().includes('grok-beta')) displayLabel = 'Grok-Beta'
+      if (id.toLowerCase().includes('grok-2')) displayLabel = 'Grok-2'
+      
+      list.push({ id, label: displayLabel })
+    }
+
+    if (provider === 'ollama') {
+      localModels.forEach(m => add(`ollama:${m}`, m))
+    } else {
+      const liveModels = providerModels[provider]
+      if (liveModels && liveModels.length > 0) {
+        liveModels.forEach(id => add(`${provider}:${id}`, id))
+      } else if (provider === 'openrouter') {
+        // Only OpenRouter gets a tiny fallback to show it's working
+        OPENROUTER_MODELS.forEach(m => add(`openrouter:${m.route}`, m.label))
+      }
+    }
+    return list
+  }
+
+  const currentModels = getModelsForProvider(selectedProvider)
+  const filtered = currentModels.filter(m => 
+    m.id.toLowerCase().includes(search.toLowerCase()) || 
+    m.label.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="model-manager-overlay">
+      <div className="model-manager-modal side-nav-layout">
+        <aside className="model-manager-sidebar">
+          <div className="model-manager-sidebar-header">PROVIDERS</div>
+          {Array.from(availableProviders).map(p => (
+            <button 
+              key={p} 
+              className={`provider-tab ${selectedProvider === p ? 'active' : ''}`}
+              onClick={() => { setSelectedProvider(p); setSearch(''); }}
+              style={{ borderLeftColor: PROVIDER_CONFIG[p]?.color }}
+            >
+              {PROVIDER_CONFIG[p]?.label || p.toUpperCase()}
+            </button>
+          ))}
+        </aside>
+
+        <main className="model-manager-main">
+          <header className="model-manager-header">
+            <div className="model-manager-title">
+              <Cpu size={16} />
+              <span>{PROVIDER_CONFIG[selectedProvider]?.label || selectedProvider.toUpperCase()} MODELS</span>
+            </div>
+            <div className="model-manager-header-actions">
+              <button 
+                className={`btn-refresh-models ${fetching ? 'spinning' : ''}`} 
+                onClick={onRefresh} 
+                title="Fetch latest models list"
+                disabled={fetching}
+              >
+                <RefreshCw size={14} />
+              </button>
+              <button className="btn-close-modal" onClick={onClose}><X size={16} /></button>
+            </div>
+          </header>
+
+          <div className="model-manager-search">
+            <Search size={14} />
+            <input 
+              placeholder={fetching ? "Fetching models..." : `Search ${selectedProvider} models...`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoFocus
+              disabled={fetching}
+            />
+          </div>
+
+          <div className="model-manager-list">
+            {fetching ? (
+              <div className="vault-empty">
+                <RefreshCw size={24} className="spinning" style={{ marginBottom: 12 }} />
+                <div>Updating models list from {selectedProvider}...</div>
+              </div>
+            ) : (
+              <>
+                {providerFetchErrors[selectedProvider] && (
+                  <div className="provider-error-banner">
+                    ⚠ API ERROR: {providerFetchErrors[selectedProvider]}. Please check your vault key and internet connection.
+                  </div>
+                )}
+                {filtered.length === 0 && !providerFetchErrors[selectedProvider] ? (
+                  <div className="vault-empty">
+                    {secrets.some(s => s.provider === selectedProvider || s.label.toUpperCase().includes(selectedProvider.toUpperCase()))
+                      ? `No models found for ${selectedProvider}. Try refreshing.`
+                      : `No API key found for ${selectedProvider} in your vault.`}
+                  </div>
+                ) : (
+                  filtered.map(m => {
+                    const isFav = favoriteModels.has(m.id)
+                    return (
+                      <div key={m.id} className="model-manager-item" onClick={() => toggleFavorite(m.id)}>
+                        <span className="model-manager-item-label">{m.label}</span>
+                        <button className={`btn-fav ${isFav ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); toggleFavorite(m.id); }}>
+                          <Star size={14} fill={isFav ? "currentColor" : "none"} />
+                        </button>
+                      </div>
+                    )
+                  })
+                )}
+              </>
+            )}
+          </div>
+          
+          <footer className="model-manager-footer">
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Starred models appear in quick-select.</div>
+            <button className="setup-btn setup-btn-primary" onClick={onClose}>DONE</button>
+          </footer>
+        </main>
+      </div>
+    </div>
+  )
+}

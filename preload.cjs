@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('systemAPI', {
   writeEnv:   (entries)               => ipcRenderer.invoke('system:write-env', entries),
   killPort:   (port)                  => ipcRenderer.invoke('system:kill-port', port),
   runCommand: (cmd)                   => ipcRenderer.invoke('system:run-command', cmd),
+  proxyFetch: (url, options)          => ipcRenderer.invoke('system:proxy-fetch', { url, options }),
 });
 
 contextBridge.exposeInMainWorld('settingsAPI', {

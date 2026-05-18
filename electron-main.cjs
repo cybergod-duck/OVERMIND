@@ -686,6 +686,16 @@ ipcMain.handle('system:run-command', (_e, cmd) => {
   )
 })
 
+ipcMain.handle('system:proxy-fetch', async (_e, { url, options }) => {
+  try {
+    const res = await fetch(url, options)
+    const data = await res.json()
+    return { ok: res.ok, status: res.status, data }
+  } catch (err) {
+    return { ok: false, error: err.message }
+  }
+})
+
 // ── Privacy Sentinel IPC Handlers ──────────────────────────────
 
 const SUSPICIOUS_PROCESS_KEYWORDS = [
