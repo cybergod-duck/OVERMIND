@@ -688,10 +688,81 @@ ipcMain.handle('system:run-command', (_e, cmd) => {
 
 ipcMain.handle('system:proxy-fetch', async (_e, { url, options }) => {
   try {
-    const res = await fetch(url, options)
-    const data = await res.json()
+    const fetchOptions = {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        'User-Agent': 'Overmind/4.0.0 (Windows; Desktop AI Assistant)'
+      }
+    }
+    const res = await fetch(url, fetchOptions)
+    const text = await res.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = { rawResponse: text }
+    }
     return { ok: res.ok, status: res.status, data }
   } catch (err) {
+    console.error('[PROXY_FETCH] Error:', err.message)
+    return { ok: false, error: err.message }
+  }
+})
+
+ipcMain.handle('anthropic-request', async (_event, { endpoint, method = 'POST', headers, body }) => {
+  console.log('[ANTHROPIC-BRIDGE] received request:', JSON.stringify({ endpoint, headers: Object.keys(headers), bodyLength: body ? JSON.stringify(body).length : 0 }))
+  try {
+    const url = `https://api.anthropic.com${endpoint}`
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+        'User-Agent': 'Overmind/4.0.0 (Windows; Desktop AI Assistant)'
+      }
+    }
+    if (body && method !== 'GET') options.body = JSON.stringify(body)
+
+    const res = await fetch(url, options)
+    const text = await res.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = { rawResponse: text }
+    }
+    return { ok: res.ok, status: res.status, data }
+  } catch (err) {
+    console.error('[ANTHROPIC_REQUEST] Error:', err.message)
+    return { ok: false, error: err.message }
+  }
+})
+
+ipcMain.handle('moonshot-request', async (_event, { endpoint, method = 'POST', headers, body }) => {
+  try {
+    const url = `https://api.moonshot.ai${endpoint}`
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+        'User-Agent': 'Overmind/4.0.0 (Windows; Desktop AI Assistant)'
+      }
+    }
+    if (body && method !== 'GET') options.body = JSON.stringify(body)
+
+    const res = await fetch(url, options)
+    const text = await res.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = { rawResponse: text }
+    }
+    return { ok: res.ok, status: res.status, data }
+  } catch (err) {
+    console.error('[MOONSHOT_REQUEST] Error:', err.message)
     return { ok: false, error: err.message }
   }
 })

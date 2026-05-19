@@ -133,6 +133,8 @@ declare global {
       killPort:   (port: number) => Promise<any>
       runCommand: (cmd: string) => Promise<any>
       proxyFetch: (url: string, options: any) => Promise<any>
+      anthropicRequest: (args: { endpoint: string, method?: string, headers: any, body?: any }) => Promise<any>
+      moonshotRequest: (args: { endpoint: string, method?: string, headers: any, body?: any }) => Promise<any>
     }
     settingsAPI: {
       get:    (key: string) => Promise<any>
@@ -369,7 +371,7 @@ const PROVIDER_CONFIG: Record<string, ProviderInfo> = {
   xai: { label: 'XAI/GROK', color: '#5a3d8f', baseUrl: 'https://api.x.ai/v1' },
   deepseek: { label: 'DEEPSEEK', color: '#2a5a7f', baseUrl: 'https://api.deepseek.com/v1' },
   groq: { label: 'GROQ', color: '#8f4a1a', baseUrl: 'https://api.groq.com/openai/v1' },
-  moonshot: { label: 'MOONSHOT', color: '#1a6b4a', baseUrl: 'https://api.moonshot.cn/v1' },
+  moonshot: { label: 'MOONSHOT', color: '#1a6b4a', baseUrl: 'https://api.moonshot.ai/v1' },
 }
 
 // OpenRouter models fallback list (minimal)
@@ -769,24 +771,74 @@ function App() {
 
     // Anthropic
     const anthropicKey = getKey('ANTHROPIC')
-    if (anthropicKey) trackFetch('Anthropic', 'anthropic',
-      'https://api.anthropic.com/v1/models', 
-      { 
-        headers: { 
-          'x-api-key': anthropicKey,
-          'anthropic-version': '2023-06-01'
-        } 
-      },
-      (d) => setProviderModels(prev => ({ ...prev, anthropic: d.data?.map((m: any) => m.id) ?? [] }))
-    )
+    if (anthropicKey) {
+      console.log('[ANTHROPIC] starting discovery via bridge...')
+      const p = window.systemAPI?.anthropicRequest
+        ? window.systemAPI.anthropicRequest({
+            endpoint: '/v1/models',
+            method: 'GET',
+            headers: { 
+              'x-api-key': anthropicKey,
+              'anthropic-version': '2023-06-01',
+              'accept': 'application/json'
+            }
+          })
+        : fetch('https://api.anthropic.com/v1/models', { 
+            headers: { 
+              'x-api-key': anthropicKey,
+              'anthropic-version': '2023-06-01',
+              'accept': 'application/json'
+            } 
+          }).then(async res => ({ ok: res.ok, status: res.status, data: await res.json() }))
+      
+      fetches.push(
+        p.then(res => {
+          if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
+          setProviderModels(prev => ({ ...prev, anthropic: res.data.data?.map((m: any) => m.id) ?? [] }))
+          setProviderFetchErrors(prev => {
+            const next = { ...prev }
+            delete next['anthropic']
+            return next
+          })
+        })
+        .catch(err => {
+          setProviderFetchErrors(prev => ({ ...prev, anthropic: err.message }))
+        })
+      )
+    }
 
     // Moonshot
     const moonshotKey = getKey('MOONSHOT')
-    if (moonshotKey) trackFetch('Moonshot', 'moonshot',
-      'https://api.moonshot.cn/v1/models', 
-      { headers: { Authorization: `Bearer ${moonshotKey}` } },
-      (d) => setProviderModels(prev => ({ ...prev, moonshot: d.data?.map((m: any) => m.id) ?? [] }))
-    )
+    if (moonshotKey) {
+      const p = window.systemAPI?.moonshotRequest
+        ? window.systemAPI.moonshotRequest({
+            endpoint: '/v1/models',
+            method: 'GET',
+            headers: { 
+              Authorization: `Bearer ${moonshotKey}`
+            }
+          })
+        : fetch('https://api.moonshot.ai/v1/models', { 
+            headers: { 
+              Authorization: `Bearer ${moonshotKey}`
+            } 
+          }).then(async res => ({ ok: res.ok, status: res.status, data: await res.json() }))
+
+      fetches.push(
+        p.then(res => {
+          if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
+          setProviderModels(prev => ({ ...prev, moonshot: res.data.data?.map((m: any) => m.id) ?? [] }))
+          setProviderFetchErrors(prev => {
+            const next = { ...prev }
+            delete next['moonshot']
+            return next
+          })
+        })
+        .catch(err => {
+          setProviderFetchErrors(prev => ({ ...prev, moonshot: err.message }))
+        })
+      )
+    }
 
     // DeepSeek
     const deepseekKey = getKey('DEEPSEEK')

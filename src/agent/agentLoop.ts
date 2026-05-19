@@ -83,25 +83,128 @@ export async function callAI(
     const data = await res.json()
     return data.message?.content || JSON.stringify(data)
   } else if (config) {
-    const res = await fetch(`${config.baseUrl}/chat/completions`, {
+    let url = `${config.baseUrl}/chat/completions`
+    let headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    }
+    let body: any = {
+      model: modelName,
+      messages: [systemMsg, ...msgs],
+      temperature: 0.3,
+      max_tokens: 8192,
+    }
+
+    const fetchFn = (window as any).systemAPI?.proxyFetch 
+      ? (u: string, o: any) => (window as any).systemAPI.proxyFetch(u, o)
+      : async (u: string, o: any) => {
+          const r = await fetch(u, o)
+          const data = await r.json()
+          return { ok: r.ok, status: r.status, data }
+        }
+
+    // Specific logic for Anthropic
+    if (provider === 'anthropic') {
+      console.log('[ANTHROPIC] sending chat request via bridge...')
+      const p = (window as any).systemAPI?.anthropicRequest
+        ? (window as any).systemAPI.anthropicRequest({
+            endpoint: '/v1/messages',
+            method: 'POST',
+            headers: {
+              'x-api-key': apiKey!,
+              'anthropic-version': '2023-06-01'
+            },
+            body: {
+              model: modelName,
+              system: sysPrompt,
+              messages: msgs.map(m => ({ 
+                role: m.role === 'assistant' ? 'assistant' : 'user', 
+                content: m.content 
+              })),
+              max_tokens: 8192,
+              temperature: 0.3
+            }
+          })
+        : fetchFn(`https://api.anthropic.com/v1/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey!,
+              'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+              model: modelName,
+              system: sysPrompt,
+              messages: msgs.map(m => ({ 
+                role: m.role === 'assistant' ? 'assistant' : 'user', 
+                content: m.content 
+              })),
+              max_tokens: 8192,
+              temperature: 0.3
+            }),
+          })
+
+      const res = await p
+
+      if (!res.ok) {
+        const errText = res.data ? JSON.stringify(res.data) : `HTTP ${res.status}`
+        throw new Error(`${provider.toUpperCase()} error (${res.status}): ${errText}`)
+      }
+
+      return res.data.content?.[0]?.text || JSON.stringify(res.data)
+    }
+
+    // Specific logic for Moonshot
+    if (provider === 'moonshot') {
+      const p = (window as any).systemAPI?.moonshotRequest
+        ? (window as any).systemAPI.moonshotRequest({
+            endpoint: '/v1/chat/completions',
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey!}` },
+            body: {
+              model: modelName,
+              messages: [systemMsg, ...msgs],
+              temperature: 0.3,
+              max_tokens: 8192
+            }
+          })
+        : fetchFn(`https://api.moonshot.ai/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey!}`
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [systemMsg, ...msgs],
+              temperature: 0.3,
+              max_tokens: 8192,
+            }),
+          })
+      
+      const res = await p
+      if (!res.ok) {
+        const errText = res.data ? JSON.stringify(res.data) : `HTTP ${res.status}`
+        throw new Error(`${provider.toUpperCase()} error (${res.status}): ${errText}`)
+      }
+      return res.data.choices?.[0]?.message?.content || JSON.stringify(res.data)
+    }
+
+    const res = await fetchFn(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [systemMsg, ...msgs],
-        temperature: 0.3,
-        max_tokens: 8192,
-      }),
+      headers,
+      body: JSON.stringify(body),
     })
+
     if (!res.ok) {
-      const errText = await res.text()
+      const errText = res.data ? JSON.stringify(res.data) : `HTTP ${res.status}`
       throw new Error(`${provider.toUpperCase()} error (${res.status}): ${errText}`)
     }
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content || JSON.stringify(data)
+
+    if (provider === 'anthropic') {
+      return res.data.content?.[0]?.text || JSON.stringify(res.data)
+    }
+    return res.data.choices?.[0]?.message?.content || JSON.stringify(res.data)
   } else {
     throw new Error(`Unknown provider: ${provider}`)
   }

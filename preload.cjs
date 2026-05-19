@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('systemAPI', {
   killPort:   (port)                  => ipcRenderer.invoke('system:kill-port', port),
   runCommand: (cmd)                   => ipcRenderer.invoke('system:run-command', cmd),
   proxyFetch: (url, options)          => ipcRenderer.invoke('system:proxy-fetch', { url, options }),
+  anthropicRequest: (data)            => ipcRenderer.invoke('anthropic-request', data),
+  moonshotRequest: (data)             => ipcRenderer.invoke('moonshot-request', data),
 });
 
 contextBridge.exposeInMainWorld('settingsAPI', {
