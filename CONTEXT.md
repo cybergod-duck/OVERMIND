@@ -1,6 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
+**Last synced:** 2026-05-19 (commits 55537e0, 4eacb60)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
@@ -112,10 +113,15 @@ Overmind/
 
 | Method | IPC Channel | Returns |
 |--------|------------|---------|
-| `getInfo()` | `system:info` | `SystemInfo` — OS, CPU, RAM, disk |
-| `ollamaStatus()` | `system:ollamaStatus` | `{ running: boolean, version?: string }` |
-| `startOllama()` | `system:startOllama` | `boolean` |
-| `execCommand(command)` | `system:exec` | `{ stdout, stderr }` |
+| `getHealth()` | `system:health` | `SystemInfo` — OS, CPU, RAM, disk |
+| `ollamaPull(model)` | `system:ollama-pull` | `any` |
+| `ollamaList()` | `system:ollama-list` | `string[]` |
+| `writeEnv(entries)` | `system:write-env` | `boolean` |
+| `killPort(port)` | `system:kill-port` | `boolean` |
+| `runCommand(cmd)` | `system:run-command` | `{ stdout, stderr }` |
+| `proxyFetch(url, options)` | `system:proxy-fetch` | `{ ok, status, data }` |
+| `anthropicRequest(data)` | `anthropic-request` | `{ ok, status, data }` — IPC bridge bypassing CORS |
+| `moonshotRequest(data)` | `moonshot-request` | `{ ok, status, data }` — IPC bridge bypassing CORS |
 
 ### 3.4 Setup API (`window.setupAPI`)
 
@@ -173,18 +179,20 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 
 | Date | Commit | Message |
 |------|--------|---------|
+| 2026-05-19 | `55537e0` | `style(ui): enhance custom select component styling` |
+| 2026-05-19 | `4eacb60` | `feat(api): add IPC bridges for Anthropic and Moonshot providers` |
 | 2026-05-17 | `4ae2fbe` | `ui: multi-theme system with Obsidian (magenta/teal) + 4 others` |
 | 2026-05-17 | `1dc268d` | `feat: first-run experience with welcome onboarding` |
 | 2026-05-17 | `7f4cd75` | `ui: remove redundant Vault Provider dropdown` |
 | 2026-05-17 | `1f4e77e` | `ui: premium polish pass - modern dark theme for Overmind` |
 | 2026-05-17 | `0339e80` | `Rebrand: Final LOCKBOX → Overmind cleanup pass` |
-| 2026-05-17 | `a90f15b` | `Rebrand: LOCKBOX → Overmind` |
 
 ---
 
 ## 6. Known Issues / TODOs
 
-- **`electron-main.cjs:89`** — Store name still `'lockbox-settings'`, should be `'overmind-settings'` (missed during rebrand cleanup)
+- **`electron-main.cjs`** — Store name may still be `'lockbox-settings'` — needs verification
+- **`preload.cjs`** — `systemAPI` table in §3.3 now reflects actual live methods (updated 2026-05-19)
 - **`src/App.tsx`** — All UI in one file (~2792 lines). Could benefit from component extraction (VaultSection, SettingsPanel, ChatArea, SetupWizard, PrivacySentinel, SystemDoctor, WelcomeOverlay)
 - **`src/hooks/`** and **`src/components/`** — Empty directories; no extracted hooks or components yet
 - **`src/agent/agentLoop.ts:38`** — Inline `CLOUD_MODELS` map in App.tsx duplicates the one in agentLoop.ts

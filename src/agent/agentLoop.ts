@@ -201,9 +201,6 @@ export async function callAI(
       throw new Error(`${provider.toUpperCase()} error (${res.status}): ${errText}`)
     }
 
-    if (provider === 'anthropic') {
-      return res.data.content?.[0]?.text || JSON.stringify(res.data)
-    }
     return res.data.choices?.[0]?.message?.content || JSON.stringify(res.data)
   } else {
     throw new Error(`Unknown provider: ${provider}`)
