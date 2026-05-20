@@ -1,7 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
-**Last synced:** 2026-05-19 (commits 55537e0, 4eacb60)
+**Last synced:** 2026-05-20 (commits 55537e0, 4eacb60 + UA bump)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
@@ -86,6 +86,8 @@ Overmind/
 | `set(key, value)` | `settings:set` | `boolean` |
 | `getAll()` | `settings:getAll` | `Record<string, any>` — full store |
 | `reset()` | `settings:reset` | `boolean` |
+
+**Store name:** `overmind-settings` (confirmed 2026-05-20)
 
 **Store defaults** (set in `electron-main.cjs:24-37`):
 - `defaultModel: ''`
@@ -179,6 +181,7 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 
 | Date | Commit | Message |
 |------|--------|---------|
+| 2026-05-20 | *(today)* | `fix(main): bump User-Agent to Overmind/4.1.0 in proxy-fetch and anthropic-request` |
 | 2026-05-19 | `55537e0` | `style(ui): enhance custom select component styling` |
 | 2026-05-19 | `4eacb60` | `feat(api): add IPC bridges for Anthropic and Moonshot providers` |
 | 2026-05-17 | `4ae2fbe` | `ui: multi-theme system with Obsidian (magenta/teal) + 4 others` |
@@ -191,9 +194,6 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 
 ## 6. Known Issues / TODOs
 
-- **`electron-main.cjs`** — Store name may still be `'lockbox-settings'` — needs verification
-- **`preload.cjs`** — `systemAPI` table in §3.3 now reflects actual live methods (updated 2026-05-19)
-- **`src/App.tsx`** — All UI in one file (~2792 lines). Could benefit from component extraction (VaultSection, SettingsPanel, ChatArea, SetupWizard, PrivacySentinel, SystemDoctor, WelcomeOverlay)
-- **`src/hooks/`** and **`src/components/`** — Empty directories; no extracted hooks or components yet
-- **`src/agent/agentLoop.ts:38`** — Inline `CLOUD_MODELS` map in App.tsx duplicates the one in agentLoop.ts
-- **Ollama auto-start** — On first run, if Ollama is installed but not running, auto-start it instead of just showing "offline" state
+- **`src/App.tsx`** — All UI in one file (~2792 lines). Planned component extraction: VaultSection, SettingsPanel, ChatArea, SetupWizard, PrivacySentinel, SystemDoctor, WelcomeOverlay. Deferred — pending next feature sprint.
+- **`src/hooks/`** and **`src/components/`** — Empty directories; no extracted hooks or components yet.
+- **Ollama auto-start** — On first run, if Ollama is installed but not running, auto-start it instead of just showing "offline" state. Pending UX decision.
