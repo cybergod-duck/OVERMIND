@@ -692,7 +692,7 @@ ipcMain.handle('system:proxy-fetch', async (_e, { url, options }) => {
       ...options,
       headers: {
         ...(options.headers || {}),
-        'User-Agent': 'Overmind/4.0.0 (Windows; Desktop AI Assistant)'
+        'User-Agent': 'Overmind/4.1.0 (Windows; Desktop AI Assistant)'
       }
     }
     const res = await fetch(url, fetchOptions)
@@ -719,7 +719,7 @@ ipcMain.handle('anthropic-request', async (_event, { endpoint, method = 'POST', 
       headers: {
         'Content-Type': 'application/json',
         ...headers,
-        'User-Agent': 'Overmind/4.0.0 (Windows; Desktop AI Assistant)'
+        'User-Agent': 'Overmind/4.1.0 (Windows; Desktop AI Assistant)'
       }
     }
     if (body && method !== 'GET') options.body = JSON.stringify(body)
@@ -747,7 +747,7 @@ ipcMain.handle('moonshot-request', async (_event, { endpoint, method = 'POST', h
       headers: {
         'Content-Type': 'application/json',
         ...headers,
-        'User-Agent': 'Overmind/4.0.0 (Windows; Desktop AI Assistant)'
+        'User-Agent': 'Overmind/4.1.0 (Windows; Desktop AI Assistant)'
       }
     }
     if (body && method !== 'GET') options.body = JSON.stringify(body)

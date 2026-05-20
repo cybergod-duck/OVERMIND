@@ -880,9 +880,17 @@ function App() {
     setFetchingModels(false)
   }
 
+  // Only re-fetch when the count or set of API key providers changes — not on every vault edit
+  const apiKeyProviderKey = secrets
+    .filter(s => s.type === 'api_key' && s.provider)
+    .map(s => s.provider)
+    .sort()
+    .join(',')
+
   useEffect(() => {
     fetchLiveModels()
-  }, [secrets])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKeyProviderKey])
 
   const log = (e: string) => setEvents(prev => [e, ...prev].slice(0, 5))
 
