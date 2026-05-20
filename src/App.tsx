@@ -15,6 +15,7 @@ import {
 import { generateRemediationActions, generateLabel } from './utils/privacyUtils'
 import { _analysisCache, AGENT_TOOLS, setLastPrivacyResult } from './agent/agentTools'
 import { TOOL_SYSTEM_SUFFIX } from './agent/systemPrompt'
+import { SYSTEM_PROMPT, PROVIDER_CONFIG, OPENROUTER_MODELS, CLOUD_MODELS, KEY_PATTERNS } from './constants/providers'
 import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from './agent/toolParser'
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
 
@@ -23,39 +24,7 @@ import type { RemediationAction, PrivacySummaryResult, PrivacyStartupResult, Pri
 
 // ── Constants ──────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are Overmind, a local system operator assistant.
-
-## Core Instructions
-
-You do three things:
-1) Help the user talk to local Ollama and remote AI APIs using credentials from the vault.
-2) Help manage those credentials safely.
-3) Help diagnose and fix system issues by asking for specific tools.
-
-When the user describes a system problem (slow internet, high CPU, freezing apps, "something is broken"), respond in two parts:
-- First, in plain language, explain what you suspect.
-- Second, on its own line, emit one or more tool tokens so I can run them:
-  - [TOOL:DIAGNOSE_NETWORK] to get network latency and DNS health.
-  - [TOOL:DIAGNOSE_SYSTEM] to get CPU, memory, top processes.
-  - [TOOL:LIST_FOLDER path="..."] if you need to inspect a folder's contents.
-  - [TOOL:PRIVACY_SCAN] to run a full privacy scan (startup items, hosts file, processes, DNS config).
-
-Do **not** invent results for these tools. Wait for the actual diagnostic output in later messages and then interpret it.
-
-After a tool call result is returned to you, respond naturally in plain language summarizing what happened.
-Only use a tool when the user's request clearly requires it. Never guess — if unsure, ask first.`
-
-// Routing config only — NOT a list of available models
-const PROVIDER_CONFIG: Record<string, ProviderInfo> = {
-  ollama: { label: 'OLLAMA', color: '#4a9eff', baseUrl: 'http://localhost:11434' },
-  openrouter: { label: 'OPENROUTER', color: '#3d8f6f', baseUrl: 'https://openrouter.ai/api/v1' },
-  anthropic: { label: 'ANTHROPIC', color: '#7a5d2b', baseUrl: 'https://api.anthropic.com/v1' },
-  google: { label: 'GOOGLE', color: '#2a5a9f', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
-  xai: { label: 'XAI/GROK', color: '#5a3d8f', baseUrl: 'https://api.x.ai/v1' },
-  deepseek: { label: 'DEEPSEEK', color: '#2a5a7f', baseUrl: 'https://api.deepseek.com/v1' },
-  groq: { label: 'GROQ', color: '#8f4a1a', baseUrl: 'https://api.groq.com/openai/v1' },
-  moonshot: { label: 'MOONSHOT', color: '#1a6b4a', baseUrl: 'https://api.moonshot.ai/v1' },
-}
+// ── Component ──────────────────────────────────────────────────
 
 // OpenRouter models fallback list (minimal)
 const OPENROUTER_MODELS: { route: string; label: string }[] = [
