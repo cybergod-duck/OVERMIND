@@ -1,7 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
-**Last synced:** 2026-05-20 (commits 55537e0, 4eacb60 + UA bump)
+**Last synced:** 2026-05-20 (fetchLiveModels dependency optimization)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
@@ -181,6 +181,7 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 
 | Date | Commit | Message |
 |------|--------|---------|
+| 2026-05-20 | *(today)* | `fix(app): optimize fetchLiveModels — dependency changed from [secrets] to [apiKeyProviderKey] (sorted provider list), eliminating redundant API fan-out on vault label/note/password edits` |
 | 2026-05-20 | *(today)* | `fix(main): bump User-Agent to Overmind/4.1.0 in proxy-fetch and anthropic-request` |
 | 2026-05-19 | `55537e0` | `style(ui): enhance custom select component styling` |
 | 2026-05-19 | `4eacb60` | `feat(api): add IPC bridges for Anthropic and Moonshot providers` |
@@ -194,6 +195,27 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 
 ## 6. Known Issues / TODOs
 
-- **`src/App.tsx`** — All UI in one file (~2792 lines). Planned component extraction: VaultSection, SettingsPanel, ChatArea, SetupWizard, PrivacySentinel, SystemDoctor, WelcomeOverlay. Deferred — pending next feature sprint.
+### App.tsx Refactor (In Progress)
+
+`src/App.tsx` is ~2792 lines — all UI in one component. Planned extraction order:
+
+**Phase 1 — Safe moves (copy-paste, zero state changes):**
+- `<SetupWizard />` — extract `showSetup` render block (~200 lines)
+- `<WelcomeOverlay />` — extract `showWelcome` render block (~60 lines)
+- Move already-written sub-components to `src/components/`: `AnalysisSummaryDisplay`, `CustomModelSelect`, `ModelManager`
+
+**Phase 2 — Hook extraction (requires state isolation first):**
+- `useVault()` — wraps: `secrets`, `peeked`, `vaultFilter`, `editingSecretId`, all vault handlers
+- `usePrivacy()` — wraps: `privacyResult`, `privacyRunning`, `privacyConfirmAction`, `privacyActionResults`
+- `useDoctor()` — wraps: `doctorLog`, `healthData`, `doctorRunning`, `pullModelInput`, `killPortInput`
+
+**Phase 3 — Component extraction (after Phase 2):**
+- `<VaultSection />`, `<PrivacySentinel />`, `<SystemDoctor />`, `<SettingsPanel />`, `<ChatArea />`
+
+**Performance fixes applied:**
+- ✅ `fetchLiveModels` dependency: `[secrets]` → `[apiKeyProviderKey]`. Eliminates 7-provider API fan-out on every vault edit (label, note, password, card changes).
+
+### Other TODOs
+- **`agentLoop.ts`** — Dead code block after Moonshot handler: unreachable Anthropic response parser at end of `callAI`. Harmless but should be cleaned up.
 - **`src/hooks/`** and **`src/components/`** — Empty directories; no extracted hooks or components yet.
 - **Ollama auto-start** — On first run, if Ollama is installed but not running, auto-start it instead of just showing "offline" state. Pending UX decision.
