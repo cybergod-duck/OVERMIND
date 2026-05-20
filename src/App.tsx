@@ -26,10 +26,7 @@ import type { RemediationAction, PrivacySummaryResult, PrivacyStartupResult, Pri
 
 // ── Component ──────────────────────────────────────────────────
 
-// OpenRouter models fallback list (minimal)
-const OPENROUTER_MODELS: { route: string; label: string }[] = [
-  { route: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
-]
+
 
 // Hardcoded cloud provider models — always visible in the dropdown
 const CLOUD_MODELS: Record<string, string[]> = {
