@@ -29,36 +29,6 @@ import type { RemediationAction, PrivacySummaryResult, PrivacyStartupResult, Pri
 
 
 
-// Hardcoded cloud provider models — always visible in the dropdown
-const CLOUD_MODELS: Record<string, string[]> = {
-  anthropic: [],
-  google: [],
-  xai: [],
-  deepseek: [],
-  groq: [],
-  moonshot: [],
-}
-
-// Provider auto-detection from env key names
-const KEY_PATTERNS: [RegExp, string | undefined, string][] = [
-  [/^OPENROUTER/i, 'openrouter', 'api_key'],
-  [/^ANTHROPIC/i, 'anthropic', 'api_key'],
-  [/^GOOGLE/i, 'google', 'api_key'],
-  [/^XAI|^GROK/i, 'xai', 'api_key'],
-  [/^DEEPSEEK/i, 'deepseek', 'api_key'],
-  [/^GROQ/i, 'groq', 'api_key'],
-  [/^MOONSHOT/i, 'moonshot', 'api_key'],
-  [/^OPENAI/i, 'openrouter', 'api_key'],
-  [/^PASSWORD/i, undefined, 'password'],
-  [/^PASSCODE|^PIN/i, undefined, 'passcode'],
-  [/^NOTE|^INFO/i, undefined, 'note'],
-  [/^ID|^IDENTITY|^SSN|^LICENSE|^PASSPORT|^DOB/i, undefined, 'id'],
-  [/^TOKEN|^ACCESS_TOKEN|^REFRESH_TOKEN|^BEARER|^JWT/i, undefined, 'token'],
-  [/^BANK|^ACCOUNT|^ROUTING|^CARD|^CC_|^CREDIT|^DEBIT|^WALLET|^IBAN/i, undefined, 'bank'],
-]
-
-
-
 // ── Component ──────────────────────────────────────────────────
 
 function App() {
