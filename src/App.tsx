@@ -19,6 +19,7 @@ import { SYSTEM_PROMPT, PROVIDER_CONFIG, OPENROUTER_MODELS, CLOUD_MODELS, KEY_PA
 import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from './agent/toolParser'
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
 import { SetupPanel } from './components/SetupPanel'
+import { useProviderModels } from './hooks/useProviderModels'
 
 import type { Secret, Message, ToolToken, ProviderInfo, SetupPhase } from './types/vault'
 import type { RemediationAction, PrivacySummaryResult, PrivacyStartupResult, PrivacyHostsResult, PrivacyProcessesResult, PrivacyDnsResult, PrivacyHostsAnomaly, PrivacyProcessWarning, PrivacyStartupItem, PrivacyDnsWarning } from './types/privacy'
