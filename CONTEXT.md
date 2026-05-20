@@ -195,25 +195,23 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 
 ## 6. Known Issues / TODOs
 
-### App.tsx Refactor (In Progress)
+### App.tsx Refactor Status
 
-`src/App.tsx` is ~2792 lines — all UI in one component. Planned extraction order:
-
-**Phase 1 — Safe moves (copy-paste, zero state changes):**
-- `<SetupWizard />` — extract `showSetup` render block (~200 lines)
-- `<WelcomeOverlay />` — extract `showWelcome` render block (~60 lines)
-- Move already-written sub-components to `src/components/`: `AnalysisSummaryDisplay`, `CustomModelSelect`, `ModelManager`
-
-**Phase 2 — Hook extraction (requires state isolation first):**
-- `useVault()` — wraps: `secrets`, `peeked`, `vaultFilter`, `editingSecretId`, all vault handlers
-- `usePrivacy()` — wraps: `privacyResult`, `privacyRunning`, `privacyConfirmAction`, `privacyActionResults`
-- `useDoctor()` — wraps: `doctorLog`, `healthData`, `doctorRunning`, `pullModelInput`, `killPortInput`
-
-**Phase 3 — Component extraction (after Phase 2):**
-- `<VaultSection />`, `<PrivacySentinel />`, `<SystemDoctor />`, `<SettingsPanel />`, `<ChatArea />`
-
-**Performance fixes applied:**
-- ✅ `fetchLiveModels` dependency: `[secrets]` → `[apiKeyProviderKey]`. Eliminates 7-provider API fan-out on every vault edit (label, note, password, card changes).
+| # | What | Destination | Status |
+|---|------|-------------|--------|
+| 1 | All types/interfaces | `src/types/privacy.ts`, `src/types/vault.ts` | ✅ Done |
+| 2 | `generateRemediationActions` + `generateLabel` | `src/utils/privacyUtils.ts` | ✅ Done |
+| 3 | Constants (`PROVIDER_CONFIG`, `KEY_PATTERNS`, `SYSTEM_PROMPT`) | `src/constants/providers.ts` | ✅ Done |
+| 4 | `<SetupPanel>` | `src/components/SetupPanel.tsx` | ✅ Done |
+| 5 | `useProviderModels` hook | `src/hooks/useProviderModels.ts` | ✅ Done |
+| 6 | `<PrivacySentinel>` | `src/components/PrivacySentinel.tsx` | ✅ Done |
+| 7 | `<WelcomeOverlay>` | `src/components/WelcomeOverlay.tsx` | ⬜ Next |
+| 8 | `<SettingsPanel>` | `src/components/SettingsPanel.tsx` | ⬜ Pending |
+| 9 | `useVault` hook | `src/hooks/useVault.ts` | ⬜ Pending |
+| 10 | `useDoctor` hook | `src/hooks/useDoctor.ts` | ⬜ Pending |
+| 11 | `<VaultSection>` | `src/components/VaultSection.tsx` | ⬜ Pending |
+| 12 | `<SystemDoctor>` | `src/components/SystemDoctor.tsx` | ⬜ Pending |
+| 13 | `<ChatArea>` | `src/components/ChatArea.tsx` | ⬜ Pending |
 
 ### Other TODOs
 - **`agentLoop.ts`** — Verified clean (2026-05-20). `anthropic` and `moonshot` providers use dedicated IPC bridges; generic `fetchFn` path correctly serves all other providers. No dead code.
