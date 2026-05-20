@@ -18,6 +18,7 @@ import { TOOL_SYSTEM_SUFFIX } from './agent/systemPrompt'
 import { SYSTEM_PROMPT, PROVIDER_CONFIG, OPENROUTER_MODELS, CLOUD_MODELS, KEY_PATTERNS } from './constants/providers'
 import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from './agent/toolParser'
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
+import { SetupPanel } from './components/SetupPanel'
 
 import type { Secret, Message, ToolToken, ProviderInfo, SetupPhase } from './types/vault'
 import type { RemediationAction, PrivacySummaryResult, PrivacyStartupResult, PrivacyHostsResult, PrivacyProcessesResult, PrivacyDnsResult, PrivacyHostsAnomaly, PrivacyProcessWarning, PrivacyStartupItem, PrivacyDnsWarning } from './types/privacy'
@@ -1168,30 +1169,6 @@ function App() {
   }, [showSetup, setupPhase, ollamaHost, secrets])
 
   // Handle install ollama button
-  const handleInstallOllama = async () => {
-    if (!window.setupAPI) return
-    setSetupPhase('installing-ollama')
-    addSetupLog('')
-    addSetupLog('[ACTION] User chose to install Ollama')
-    addSetupLog('')
-    try {
-      const result = await window.setupAPI.installOllama()
-      if (result.success) {
-        addSetupLog('')
-        addSetupLog('[SETUP] Installation completed!')
-        addSetupLog('[SETUP] Please start Ollama, then click "Continue" to proceed.')
-        setSetupPhase('ollama-offline')
-      } else {
-        addSetupLog('')
-        addSetupLog(`[SETUP] Installation failed: ${result.error || 'Unknown error'}`)
-        addSetupLog('[SETUP] You can try again or skip.')
-        setSetupPhase('ollama-missing')
-      }
-    } catch (err: any) {
-      addSetupLog(`[SETUP] Installation error: ${err.message}`)
-      setSetupPhase('ollama-missing')
-    }
-  }
 
   // Handle skip ollama install
   const handleSkipOllama = () => {
@@ -1322,113 +1299,16 @@ function App() {
   // If setup panel is showing, render it instead of the main UI
   if (showSetup) {
     return (
-      <div className="setup-overlay">
-        <div className="setup-panel">
-          <div className="setup-header">
-            <Terminal size={16} />
-            <span>OVERMIND SETUP v4.0</span>
-            <span className="setup-header-phase">{setupPhase.replace(/-/g, ' ').toUpperCase()}</span>
-          </div>
-
-          {/* ── Step progress indicator ───────────────────── */}
-          <div className="setup-steps">
-            {SETUP_STEPS.map((label, i) => (
-              <div
-                key={label}
-                className={`setup-step${i <= currentSetupStep ? ' done' : ''}${i === currentSetupStep ? ' current' : ''}`}
-              >
-                <div className="setup-step-dot" />
-                <span className="setup-step-label">{label}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="setup-log" ref={setupLogRef}>
-            {setupLogs.length === 0 ? (
-              <div className="setup-log-empty">Initializing...</div>
-            ) : (
-              setupLogs.map((line, i) => (
-                <div key={i} className={logLineClass(line)}>
-                  {line}
-                </div>
-              ))
-            )}
-            {setupPhase !== 'complete' && (
-              <div className="setup-log-cursor">▌</div>
-            )}
-          </div>
-
-          {/* ── Action prompts ───────────────────────────── */}
-          <div className="setup-actions">
-            {setupPhase === 'ollama-missing' && (
-              <div className="setup-prompt">
-                <div className="setup-prompt-text">Ollama is not installed. What would you like to do?</div>
-                <div className="setup-prompt-buttons">
-                  <button className="setup-btn setup-btn-primary" onClick={handleInstallOllama}>
-                    INSTALL OLLAMA
-                  </button>
-                  <button className="setup-btn setup-btn-secondary" onClick={handleSkipOllama}>
-                    SKIP FOR NOW
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {setupPhase === 'ollama-offline' && (
-              <div className="setup-prompt">
-                <div className="setup-prompt-text">Ollama is installed but not reachable. Please start Ollama and click Continue.</div>
-                <div className="setup-prompt-buttons">
-                  <button className="setup-btn setup-btn-primary" onClick={handleOllamaOnline}>
-                    CONTINUE
-                  </button>
-                  <button className="setup-btn setup-btn-secondary" onClick={handleSkipOllama}>
-                    SKIP OLLAMA SETUP
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {setupPhase === 'model-prompt' && (
-              <div className="setup-prompt">
-                <div className="setup-prompt-text">Pick a starter model to download. Quantized models offer the best balance of speed & quality:</div>
-                <div className="setup-prompt-buttons">
-                  <button className="setup-btn setup-btn-primary recommended" onClick={() => handleSelectModel('qwen3:14b-q4')}>
-                    <span className="setup-btn-model-icon">⚡</span> qwen3:14b-q4 <span className="setup-btn-badge">RECOMMENDED ⚡FAST</span>
-                  </button>
-                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('qwen3:14b')}>
-                    <span className="setup-btn-model-icon">▲</span> qwen3:14b <span className="setup-btn-badge">SMARTER • SLOWER</span>
-                  </button>
-                  <button className="setup-btn setup-btn-primary" onClick={() => handleSelectModel('qwen3:8b')}>
-                    <span className="setup-btn-model-icon">▲</span> qwen3:8b <span className="setup-btn-badge">LIGHTWEIGHT</span>
-                  </button>
-                  <button className="setup-btn setup-btn-secondary" onClick={handleSkipModel}>
-                    SKIP FOR NOW
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {setupPhase === 'complete' && (
-              <div className="setup-prompt">
-                <div className="setup-prompt-text setup-prompt-success">
-                  ✓ Setup complete! Launching Overmind...
-                </div>
-              </div>
-            )}
-
-            {/* ── Active phase indicator ──────────────────── */}
-            {(setupPhase === 'running-checks' || setupPhase === 'installing-ollama' || setupPhase === 'pulling-model') && (
-              <div className="setup-prompt">
-                <div className="setup-prompt-text setup-prompt-active">
-                  {setupPhase === 'running-checks' && 'Running system checks...'}
-                  {setupPhase === 'installing-ollama' && 'Installing Ollama — this may take a few minutes...'}
-                  {setupPhase === 'pulling-model' && 'Downloading model — this may take a while...'}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <SetupPanel
+        setupPhase={setupPhase}
+        setupLogs={setupLogs}
+        ollamaHost={ollamaHost}
+        secrets={secrets}
+        onPhaseChange={setSetupPhase}
+        onLogsAppend={addSetupLog}
+        onFinish={finishSetup}
+        onComplete={() => setShowSetup(false)}
+      />
     )
   }
 
