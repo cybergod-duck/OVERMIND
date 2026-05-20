@@ -216,6 +216,6 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 - ✅ `fetchLiveModels` dependency: `[secrets]` → `[apiKeyProviderKey]`. Eliminates 7-provider API fan-out on every vault edit (label, note, password, card changes).
 
 ### Other TODOs
-- **`agentLoop.ts`** — Dead code block after Moonshot handler: unreachable Anthropic response parser at end of `callAI`. Harmless but should be cleaned up.
-- **`src/hooks/`** and **`src/components/`** — Empty directories; no extracted hooks or components yet.
+- **`agentLoop.ts`** — Verified clean (2026-05-20). `anthropic` and `moonshot` providers use dedicated IPC bridges; generic `fetchFn` path correctly serves all other providers. No dead code.
+- **`src/hooks/`** and **`src/components/`** — Empty directories; pending Phase 1/2 extraction above.
 - **Ollama auto-start** — On first run, if Ollama is installed but not running, auto-start it instead of just showing "offline" state. Pending UX decision.
