@@ -208,7 +208,7 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 | 7 | `<WelcomeOverlay>` | `src/components/WelcomeOverlay.tsx` | ✅ Done |
 | 8 | `<SettingsPanel>` | `src/components/SettingsPanel.tsx` | ✅ Done |
 | 9 | `useVault` hook | `src/hooks/useVault.ts` | ✅ Done |
-| 10 | `useDoctor` hook | `src/hooks/useDoctor.ts` | ⬜ Pending |
+| 10 | `useDoctor` hook | `src/hooks/useDoctor.ts` | ✅ Done |
 | 11 | `<VaultSection>` | `src/components/VaultSection.tsx` | ⬜ Pending |
 | 12 | `<SystemDoctor>` | `src/components/SystemDoctor.tsx` | ⬜ Pending |
 | 13 | `<ChatArea>` | `src/components/ChatArea.tsx` | ⬜ Pending |
