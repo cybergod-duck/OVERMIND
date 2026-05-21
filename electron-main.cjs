@@ -1081,6 +1081,69 @@ ipcMain.handle('browser:get-last-context', () => {
   return browserLastContext
 })
 
+// ── File Pick & Read IPC (attach file to chat) ────────────────
+
+ipcMain.handle('file:pick-and-read', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'Text & Code', extensions: ['txt', 'md', 'json', 'csv', 'xml', 'html', 'css', 'js', 'ts', 'tsx', 'jsx', 'py', 'java', 'c', 'cpp', 'h', 'sh', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'env', 'log', 'sql'] },
+        { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'rtf'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    })
+    if (result.canceled || !result.filePaths.length) return null
+
+    const filePath = result.filePaths[0]
+    const stat = fs.statSync(filePath)
+    const ext = path.extname(filePath).toLowerCase()
+    const fileName = path.basename(filePath)
+
+    // ── PDF handling ───────────────────────────────────────────────
+    if (ext === '.pdf') {
+      const maxPdfSize = 20 * 1024 * 1024
+      if (stat.size > maxPdfSize) return { fileName, error: `PDF too large (${(stat.size / 1024 / 1024).toFixed(1)}MB). Max: 20MB` }
+
+      try {
+        const dataBuffer = fs.readFileSync(filePath)
+        const { PDFParse } = require('pdf-parse')
+        const parser = new PDFParse({ data: dataBuffer, verbosity: 0 })
+        const pdfData = await parser.getText({})
+        const pageCount = pdfData.total || 1
+        const text = (pdfData.text || '').trim()
+        const maxTextLen = 100 * 1024
+        const truncated = text.length > maxTextLen
+        const body = truncated ? text.slice(0, maxTextLen) + `\n\n... (text truncated, ${text.length - maxTextLen} chars omitted)` : text
+
+        return {
+          fileName,
+          content: body || '(empty — no extractable text)',
+          sizeBytes: stat.size,
+          ext,
+          pageCount,
+        }
+      } catch (e) {
+        return { fileName, error: `PDF parse error: ${e.message}` }
+      }
+    }
+
+    // ── Text file handling ─────────────────────────────────────────
+    const maxSize = 500 * 1024 // 500KB limit for attachments
+    if (stat.size > maxSize) return { fileName, error: `File too large (${(stat.size / 1024).toFixed(1)}KB). Max: 500KB` }
+
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return {
+      fileName,
+      content,
+      sizeBytes: stat.size,
+      ext,
+    }
+  } catch (e) {
+    return { error: e.message }
+  }
+})
+
 // ── FILE OPERATION IPC Handlers ───────────────────────────────
 
 ipcMain.handle('folder:moveFile', async (_e, { sourcePath, targetPath }) => {

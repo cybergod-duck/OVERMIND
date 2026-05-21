@@ -895,6 +895,33 @@ function App() {
     return agentSendMessage(deps)
   }
 
+  // ── File Attachment ──────────────────────────────────────────
+  const handleAttachFile = async () => {
+    if (!(window as any).fileAPI) {
+      log('ATTACH: fileAPI not available (running outside Electron?)')
+      return
+    }
+    try {
+      const result = await (window as any).fileAPI.pickAndRead()
+      if (!result) return // user cancelled
+      if (result.error) {
+        log(`ATTACH_ERROR: ${result.error}`)
+        setMessages(prev => [...prev, { role: 'error', content: `Failed to attach file: ${result.error}` }])
+        return
+      }
+      const sizeKB = (result.sizeBytes / 1024).toFixed(1)
+      const header = result.pageCount
+        ? `[Attached: ${result.fileName} — ${sizeKB}KB, ${result.pageCount} pages]`
+        : `[Attached: ${result.fileName} — ${sizeKB}KB]`
+      const fileContent = `\n${header}\n\`\`\`${result.ext.replace('.', '')}\n${result.content}\n\`\`\``
+      setInput(prev => prev + (prev ? '\n' : '') + fileContent)
+      log(`ATTACH: ${result.fileName} (${sizeKB}KB)`)
+    } catch (err: any) {
+      log(`ATTACH_ERROR: ${err.message}`)
+      setMessages(prev => [...prev, { role: 'error', content: `Failed to attach file: ${err.message}` }])
+    }
+  }
+
   // ── Refresh Ollama models ─────────────────────────────────
 
   const refreshOllama = () => {
@@ -1789,6 +1816,7 @@ function App() {
           input={input}
           setInput={setInput}
           onSendMessage={sendMessage}
+          onAttachFile={handleAttachFile}
           chatRef={chatRef}
         />
       </div>

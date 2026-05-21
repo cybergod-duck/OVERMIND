@@ -9,6 +9,7 @@ interface ChatPanelProps {
   input: string
   setInput: React.Dispatch<React.SetStateAction<string>>
   onSendMessage: () => void
+  onAttachFile: () => void
   chatRef: React.RefObject<HTMLDivElement>
 }
 
@@ -49,7 +50,7 @@ export function ChatPanel(props: ChatPanelProps) {
 
       <div className="input-bar">
         <div className="input-container">
-          <button className="btn-attach" title="Attach file">
+          <button className="btn-attach" title="Attach file" onClick={props.onAttachFile}>
             <Plus size={16} />
           </button>
           <textarea

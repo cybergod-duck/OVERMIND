@@ -60,6 +60,16 @@ declare global {
       scanSummary:   () => Promise<PrivacySummaryResult>
       getHistory:    () => Promise<PrivacySummaryResult[]>
     }
+    fileAPI: {
+      pickAndRead: () => Promise<{
+        fileName: string
+        content: string
+        sizeBytes: number
+        ext: string
+        pageCount?: number
+        error?: string
+      } | null>
+    }
     browserAPI: {
       getStatus:      () => Promise<{ connected: boolean; clients: number }>
       sendAction:     (msg: any) => Promise<void>

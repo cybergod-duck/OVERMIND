@@ -41,6 +41,12 @@ contextBridge.exposeInMainWorld('folderAPI', {
   organizeSmart:    (folderPath)             => ipcRenderer.invoke('folder:organizeSmart', { folderPath }),
 });
 
+// ── File Attach IPC ──────────────────────────────────────────
+
+contextBridge.exposeInMainWorld('fileAPI', {
+  pickAndRead: () => ipcRenderer.invoke('file:pick-and-read'),
+});
+
 // ── Browser Bridge IPC ───────────────────────────────────────
 
 contextBridge.exposeInMainWorld('browserAPI', {
