@@ -1,7 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
-**Last synced:** 2026-05-21 (WelcomeOverlay + SettingsPanel + useVault extracted)
+**Last synced:** 2026-05-21 (SystemDoctorPanel extracted, useDoctor wired)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
@@ -210,7 +210,7 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 | 9 | `useVault` hook | `src/hooks/useVault.ts` | ✅ Done |
 | 10 | `useDoctor` hook | `src/hooks/useDoctor.ts` | ✅ Done |
 | 11 | `<VaultSection>` | `src/components/VaultSection.tsx` | ⬜ Pending |
-| 12 | `<SystemDoctor>` | `src/components/SystemDoctor.tsx` | ⬜ Pending |
+| 12 | `<SystemDoctorPanel>` | `src/components/SystemDoctorPanel.tsx` | ✅ Done |
 | 13 | `<ChatArea>` | `src/components/ChatArea.tsx` | ⬜ Pending |
 
 ### Other TODOs

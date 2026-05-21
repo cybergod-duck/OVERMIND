@@ -18,12 +18,14 @@ import { TOOL_SYSTEM_SUFFIX } from './agent/systemPrompt'
 import { SYSTEM_PROMPT, PROVIDER_CONFIG, OPENROUTER_MODELS, CLOUD_MODELS, KEY_PATTERNS } from './constants/providers'
 import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from './agent/toolParser'
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
+import { SystemDoctorPanel } from './components/SystemDoctorPanel'
 import { SetupPanel } from './components/SetupPanel'
 import { PrivacySentinel } from './components/PrivacySentinel'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { SettingsPanel } from './components/SettingsPanel'
 import { VaultSection } from './components/VaultSection'
 import { useProviderModels } from './hooks/useProviderModels'
+import { useDoctor } from './hooks/useDoctor'
 
 import type { Secret, Message, ToolToken, ProviderInfo, SetupPhase } from './types/vault'
 import type { RemediationAction, PrivacySummaryResult, PrivacyStartupResult, PrivacyHostsResult, PrivacyProcessesResult, PrivacyDnsResult, PrivacyHostsAnomaly, PrivacyProcessWarning, PrivacyStartupItem, PrivacyDnsWarning } from './types/privacy'
@@ -61,8 +63,16 @@ function App() {
   const [providerFetchErrors, setProviderFetchErrors] = useState<Record<string, string>>({})
   const [healthData, setHealthData]       = useState<any>(null)
   const [doctorLog, setDoctorLog]         = useState<string[]>([])
-  const [pullModelInput, setPullModelInput] = useState('')
-  const [killPortInput, setKillPortInput]  = useState('')
+  const {
+    pullModelInput, setPullModelInput,
+    killPortInput, setKillPortInput,
+    doctorRunning,
+    runDiagnostics,
+    pullModel,
+    exportEnv,
+    killPort,
+    runMaintenance,
+  } = useDoctor(setDoctorLog, setHealthData)
   const [doctorOpen, setDoctorOpen]        = useState(false)
 
   // ── Privacy Sentinel state ──────────────────────────────────
@@ -89,7 +99,6 @@ function App() {
   const [folderAnalysisCache, setFolderAnalysisCache] = useState<Record<string, { summary: any; timestamp: number }>>({})
   const [analyzingFolder, setAnalyzingFolder] = useState<string | null>(null)
   const [deleteConfirmPath, setDeleteConfirmPath] = useState<string | null>(null)
-  const [doctorRunning, setDoctorRunning] = useState<string | null>(null)
   const [activeSidebarTab, setActiveSidebarTab] = useState<'vault' | 'tools'>('vault')
 
   // ── First-run setup state ──────────────────────────────────
@@ -497,26 +506,6 @@ function App() {
   const log = (e: string) => setEvents(prev => [e, ...prev].slice(0, 5))
 
   // ── System Doctor ─────────────────────────────────────────
-
-  const runDiagnostics = async () => {
-    if (!window.systemAPI) {
-      setDoctorLog(prev => [...prev, '[ERR] systemAPI not available (running outside Electron?)'])
-      return
-    }
-    try {
-      const health = await window.systemAPI.getHealth()
-      setHealthData(health)
-      setDoctorLog(prev => [
-        `[DIAG] Platform: ${health.platform} ${health.arch} | Node: ${health.nodeVersion}`,
-        `[DIAG] Ollama: ${health.ollama.running ? 'RUNNING' : 'OFFLINE'} | Models: ${health.ollama.models.join(', ') || 'none'}`,
-        `[DIAG] RAM: ${health.memory.free}MB free / ${health.memory.total}MB total`,
-        ...prev,
-      ].slice(0, 50))
-      log('DOCTOR: health check complete')
-    } catch (err: any) {
-      setDoctorLog(prev => [`[ERR] ${err.message}`, ...prev].slice(0, 50))
-    }
-  }
 
   // Run diagnostics silently on mount
   useEffect(() => { runDiagnostics() }, [])
@@ -1783,169 +1772,20 @@ function App() {
           </div>
 
           {doctorOpen && (
-            <div className="doctor-panel">
-              {/* RUN DIAGNOSTICS */}
-              <button className="btn-doctor" onClick={runDiagnostics}>
-                RUN DIAGNOSTICS
-              </button>
-
-              {/* Log area */}
-              <div className="doctor-log">
-                {doctorLog.length === 0 ? (
-                  <span className="doctor-log-empty">No diagnostics run yet.</span>
-                ) : (
-                  doctorLog.map((line, i) => (
-                    <div key={i} className="doctor-log-line">{line}</div>
-                  ))
-                )}
-              </div>
-
-              {/* PULL MODEL */}
-              <div className="doctor-row">
-                <input
-                  className="doctor-input"
-                  placeholder="model name (e.g. llama3.2)"
-                  value={pullModelInput}
-                  onChange={e => setPullModelInput(e.target.value)}
-                />
-                <button
-                  className="btn-doctor-sm"
-                  onClick={async () => {
-                    if (!pullModelInput.trim()) return
-                    const model = pullModelInput.trim()
-                    setPullModelInput('')
-                    setDoctorLog(prev => [`[PULL] Starting pull of "${model}"...`, ...prev].slice(0, 50))
-                    try {
-                      const result = await window.systemAPI.ollamaPull(model)
-                      setDoctorLog(prev => [`[PULL] "${model}" complete`, ...prev].slice(0, 50))
-                    } catch (err: any) {
-                      setDoctorLog(prev => [`[PULL] "${model}" failed: ${err}`, ...prev].slice(0, 50))
-                    }
-                  }}
-                >
-                  PULL
-                </button>
-              </div>
-
-              {/* EXPORT .ENV */}
-              <button
-                className="btn-doctor"
-                onClick={async () => {
-                  try {
-                    const apiSecrets = secrets
-                      .filter(s => s.type === 'api_key')
-                      .reduce((acc, s) => ({ ...acc, [s.label]: s.value }), {})
-                    const result = await window.systemAPI.writeEnv(apiSecrets)
-                    setDoctorLog(prev => [`[ENV] Exported ${Object.keys(apiSecrets).length} keys to ${result.path}`, ...prev].slice(0, 50))
-                  } catch (err: any) {
-                    setDoctorLog(prev => [`[ENV] Export failed: ${err.message}`, ...prev].slice(0, 50))
-                  }
-                }}
-              >
-                EXPORT .ENV
-              </button>
-
-              {/* KILL PORT */}
-              <div className="doctor-row">
-                <input
-                  className="doctor-input"
-                  type="number"
-                  placeholder="port number"
-                  value={killPortInput}
-                  onChange={e => setKillPortInput(e.target.value)}
-                />
-                <button
-                  className="btn-doctor-sm"
-                  onClick={async () => {
-                    const port = parseInt(killPortInput, 10)
-                    if (isNaN(port)) return
-                    setKillPortInput('')
-                    try {
-                      const result = await window.systemAPI.killPort(port)
-                      setDoctorLog(prev => [`[KILL] Port ${port}: ${result.success ? 'freed' : 'no process found'}`, ...prev].slice(0, 50))
-                    } catch (err: any) {
-                      setDoctorLog(prev => [`[KILL] Port ${port} error: ${err.message}`, ...prev].slice(0, 50))
-                    }
-                  }}
-                >
-                  KILL
-                </button>
-              </div>
-
-              {/* ── DOCTOR MAINTENANCE TOOLS ──────────────────── */}
-              <div style={{ borderTop: '1px solid #1f2335', padding: '6px 0', marginTop: 4 }}>
-                <div style={{ fontSize: 8, color: '#8a8fb0', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Maintenance</div>
-                <button className="btn-doctor" disabled={doctorRunning === 'cleanTemp'} onClick={async () => {
-                  setDoctorRunning('cleanTemp')
-                  try {
-                    const result = await window.doctorAPI.cleanTemp()
-                    setDoctorLog(prev => [`[CLEAN TEMP] Removed ${result.removed} files, freed ${result.freedMB}MB`, ...prev].slice(0, 50))
-                  } catch (err: any) { setDoctorLog(prev => [`[CLEAN TEMP] Error: ${err.message}`, ...prev].slice(0, 50)) }
-                  finally { setDoctorRunning(null) }
-                }}>{doctorRunning === 'cleanTemp' ? '...' : 'CLEAN TEMP'}</button>
-
-                <button className="btn-doctor" onClick={async () => {
-                  setDoctorRunning('findLargeFiles')
-                  try {
-                    const result = await window.doctorAPI.findLargeFiles({ minMB: 100 })
-                    setDoctorLog(prev => [`[LARGE FILES] Found ${result.files.length} files >100MB:`, ...prev].slice(0, 50))
-                    result.files.slice(0, 10).forEach((f: any) => {
-                      setDoctorLog(prev => [`  ${f.path} (${f.sizeMB.toFixed(1)}MB)`, ...prev].slice(0, 50))
-                    })
-                  } catch (err: any) { setDoctorLog(prev => [`[LARGE FILES] Error: ${err.message}`, ...prev].slice(0, 50)) }
-                  finally { setDoctorRunning(null) }
-                }}>FIND LARGE FILES</button>
-
-                <button className="btn-doctor" onClick={async () => {
-                  setDoctorRunning('findDuplicates')
-                  try {
-                    const result = await window.doctorAPI.findDuplicates({})
-                    const totalDuplicates = result.groups.reduce((sum: number, g: any) => sum + g.files.length - 1, 0)
-                    setDoctorLog(prev => [`[DUPLICATES] Found ${result.groups.length} groups, ${totalDuplicates} duplicate files`, ...prev].slice(0, 50))
-                    result.groups.slice(0, 5).forEach((g: any) => {
-                      setDoctorLog(prev => [`  Group (${g.size} bytes): ${g.files[0]}`, ...prev].slice(0, 50))
-                      g.files.slice(1).forEach((fp: string) => {
-                        setDoctorLog(prev => [`    └ Duplicate: ${fp}`, ...prev].slice(0, 50))
-                      })
-                    })
-                  } catch (err: any) { setDoctorLog(prev => [`[DUPLICATES] Error: ${err.message}`, ...prev].slice(0, 50)) }
-                  finally { setDoctorRunning(null) }
-                }}>FIND DUPLICATES</button>
-
-                <button className="btn-doctor" onClick={async () => {
-                  setDoctorRunning('diskSpace')
-                  try {
-                    const result = await window.doctorAPI.diskSpaceReport()
-                    setDoctorLog(prev => [`[DISK SPACE] Report:`, ...prev].slice(0, 50))
-                    result.suggestions.forEach((s: string) => {
-                      setDoctorLog(prev => [`  ${s}`, ...prev].slice(0, 50))
-                    })
-                  } catch (err: any) { setDoctorLog(prev => [`[DISK SPACE] Error: ${err.message}`, ...prev].slice(0, 50)) }
-                  finally { setDoctorRunning(null) }
-                }}>DISK SPACE REPORT</button>
-
-                <button className="btn-doctor" onClick={async () => {
-                  setDoctorRunning('backup')
-                  try {
-                    const result = await window.doctorAPI.backupFolders()
-                    setDoctorLog(prev => [`[BACKUP] ${result.success ? `Saved to ${result.path}` : `Failed: ${result.error}`}`, ...prev].slice(0, 50))
-                  } catch (err: any) { setDoctorLog(prev => [`[BACKUP] Error: ${err.message}`, ...prev].slice(0, 50)) }
-                  finally { setDoctorRunning(null) }
-                }}>BACKUP FOLDERS</button>
-
-                <button className="btn-doctor" style={{ borderColor: '#f44747', color: '#f44747' }}
-                  onClick={async () => {
-                    setDoctorRunning('deepClean')
-                    try {
-                      const result = await window.doctorAPI.deepClean()
-                      result.steps.forEach((step: any) => {
-                        setDoctorLog(prev => [`[DEEP CLEAN] ${step.ok ? '✅' : '❌'} ${step.name}: ${step.detail}`, ...prev].slice(0, 50))
-                      })
-                    } catch (err: any) { setDoctorLog(prev => [`[DEEP CLEAN] Error: ${err.message}`, ...prev].slice(0, 50)) }
-                    finally { setDoctorRunning(null) }
-                  }}>DEEP SYSTEM CLEAN</button>
-              </div>
-            </div>
+            <SystemDoctorPanel
+              doctorLog={doctorLog}
+              healthData={healthData}
+              pullModelInput={pullModelInput}
+              setPullModelInput={setPullModelInput}
+              killPortInput={killPortInput}
+              setKillPortInput={setKillPortInput}
+              doctorRunning={doctorRunning}
+              onRunDiagnostics={runDiagnostics}
+              onPullModel={pullModel}
+              onExportEnv={() => exportEnv(secrets)}
+              onKillPort={killPort}
+              onRunMaintenance={runMaintenance}
+            />
           )}
 
           {/* ── Privacy Sentinel ──────────────────────────────── */}

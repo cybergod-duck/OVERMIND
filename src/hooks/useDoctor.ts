@@ -69,13 +69,33 @@ export function useDoctor(
     }
   }
 
-  const runMaintenance = async (tool: string, fn: () => Promise<any>, logPrefix: string) => {
+  const runMaintenance = async (tool: string) => {
     setDoctorRunning(tool)
     try {
-      await fn()
-      logDoctor(`[${logPrefix}] Success`)
+      if (tool === 'cleanTemp') {
+        const result = await window.doctorAPI.cleanTemp()
+        logDoctor(`[CLEAN TEMP] Removed ${result.removed} files, freed ${result.freedMB}MB`)
+      } else if (tool === 'findLargeFiles') {
+        const result = await window.doctorAPI.findLargeFiles({ minMB: 100 })
+        logDoctor(`[LARGE FILES] Found ${result.files.length} files >100MB:`)
+      } else if (tool === 'findDuplicates') {
+        const result = await window.doctorAPI.findDuplicates({})
+        const totalDuplicates = result.groups.reduce((sum: number, g: any) => sum + g.files.length - 1, 0)
+        logDoctor(`[DUPLICATES] Found ${totalDuplicates} duplicates in ${result.groups.length} groups`)
+      } else if (tool === 'diskSpaceReport') {
+        const result = await window.doctorAPI.diskSpaceReport()
+        logDoctor(`[DISK SPACE] ${result.drives.length} drives, ${result.suggestions.length} suggestions`)
+      } else if (tool === 'backupFolders') {
+        const result = await window.doctorAPI.backupFolders()
+        logDoctor(`[BACKUP] ${result.success ? `Saved to ${result.path}` : `Failed: ${result.error}`}`)
+      } else if (tool === 'deepClean') {
+        const result = await window.doctorAPI.deepClean()
+        logDoctor(`[DEEP CLEAN] ${result.success ? 'Success' : 'Failed'}`)
+      } else {
+        throw new Error(`Unknown maintenance tool: ${tool}`)
+      }
     } catch (err: any) {
-      logDoctor(`[${logPrefix}] Error: ${err.message}`)
+      logDoctor(`[${tool}] Error: ${err.message}`)
     } finally {
       setDoctorRunning(null)
     }
