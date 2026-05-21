@@ -7,93 +7,102 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME: DEFAULT (Simple Blue)
+   THEME: DEFAULT — Balanced dark (cool blue-gray, clean)
    ══════════════════════════════════════════════════════════════ */
 :root,
 [data-theme="default"] {
   --bg: #070b14;
   --surface: #0f1627;
   --surface-soft: #17223b;
-  --border: #1e2b4d;
+  --border: rgba(255, 255, 255, 0.07);
   --text: #f8fafc;
   --text-muted: #94a3b8;
-  
+
   --accent: #3b82f6;
   --accent-secondary: #60a5fa;
-  --accent-soft: rgba(59, 130, 246, 0.1);
-  --accent-glow: rgba(59, 130, 246, 0.3);
-  
+  --accent-soft: rgba(59, 130, 246, 0.15);
+  --accent-glow: rgba(59, 130, 246, 0.5);
+
   --danger: #ef4444;
   --danger-soft: rgba(239, 68, 68, 0.1);
-  
-  --bg-gradient: radial-gradient(circle at 50% -20%, #152038 0%, #070b14 70%);
+
+  --bg-gradient: radial-gradient(ellipse at 50% -10%, #152038 0%, #070b14 65%);
+  --glow-intensity: 0.25;
+  --border-radius-modifier: 6px;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME: CYBER (Green)
-   ══════════════════════════════════════════════════════════════ */
-[data-theme="cyber"] {
-  --bg: #04100c;
-  --surface: #0a1f18;
-  --surface-soft: #123328;
-  --border: #1a4233;
-  --text: #f0fdf4;
-  --text-muted: #86efac;
-  
-  --accent: #10b981;
-  --accent-secondary: #34d399;
-  --accent-soft: rgba(16, 185, 129, 0.1);
-  --accent-glow: rgba(16, 185, 129, 0.3);
-  
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.1);
-  
-  --bg-gradient: radial-gradient(circle at 50% -20%, #0e2920 0%, #04100c 70%);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   THEME: OBSIDIAN (Purple)
+   THEME: OBSIDIAN — Magenta & teal (two-accent, deep purple-black)
    ══════════════════════════════════════════════════════════════ */
 [data-theme="obsidian"] {
-  --bg: #0b0512;
-  --surface: #170b26;
-  --surface-soft: #25123d;
-  --border: #351a59;
+  --bg: #08040f;
+  --surface: #120820;
+  --surface-soft: #1e1030;
+  --border: rgba(196, 84, 252, 0.2);
   --text: #faf5ff;
-  --text-muted: #d8b4fe;
-  
-  --accent: #a855f7;
-  --accent-secondary: #c084fc;
-  --accent-soft: rgba(168, 85, 247, 0.1);
-  --accent-glow: rgba(168, 85, 247, 0.3);
-  
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.1);
-  
-  --bg-gradient: radial-gradient(circle at 50% -20%, #200f36 0%, #0b0512 70%);
+  --text-muted: #c084fc;
+
+  --accent: #c026d3;
+  --accent-secondary: #2dd4bf;
+  --accent-soft: rgba(192, 38, 211, 0.18);
+  --accent-glow: rgba(192, 38, 211, 0.6);
+
+  --danger: #f43f5e;
+  --danger-soft: rgba(244, 63, 94, 0.1);
+
+  --bg-gradient: radial-gradient(ellipse at 30% -5%, #2a0a3e 0%, #08040f 60%);
+  --glow-intensity: 0.45;
+  --border-radius-modifier: 4px;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME: MIDNIGHT (Gold)
+   THEME: CYBER — Neon high-contrast (true high-contrast green)
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="cyber"] {
+  --bg: #010a06;
+  --surface: #061410;
+  --surface-soft: #0d2318;
+  --border: rgba(0, 255, 128, 0.18);
+  --text: #edfff6;
+  --text-muted: #6ee7b7;
+
+  --accent: #00ff88;
+  --accent-secondary: #00e5ff;
+  --accent-soft: rgba(0, 255, 136, 0.12);
+  --accent-glow: rgba(0, 255, 136, 0.7);
+
+  --danger: #ff4466;
+  --danger-soft: rgba(255, 68, 102, 0.1);
+
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #042218 0%, #010a06 55%);
+  --glow-intensity: 0.6;
+  --border-radius-modifier: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   THEME: MIDNIGHT — Deep navy (rich navy, warm gold, soft borders)
    ══════════════════════════════════════════════════════════════ */
 [data-theme="midnight"] {
-  --bg: #141108;
-  --surface: #241d0e;
-  --surface-soft: #382c14;
-  --border: #4a3a19;
-  --text: #fffbeb;
-  --text-muted: #fcd34d;
-  
+  --bg: #080c18;
+  --surface: #0e1428;
+  --surface-soft: #161e3a;
+  --border: rgba(251, 191, 36, 0.15);
+  --text: #f0f4ff;
+  --text-muted: #93a8d4;
+
   --accent: #f59e0b;
   --accent-secondary: #fbbf24;
-  --accent-soft: rgba(245, 158, 11, 0.1);
-  --accent-glow: rgba(245, 158, 11, 0.3);
-  
+  --accent-soft: rgba(245, 158, 11, 0.15);
+  --accent-glow: rgba(245, 158, 11, 0.55);
+
   --danger: #ef4444;
   --danger-soft: rgba(239, 68, 68, 0.1);
-  
-  --bg-gradient: radial-gradient(circle at 50% -20%, #2e2411 0%, #141108 70%);
+
+  --bg-gradient: radial-gradient(ellipse at 70% -10%, #0f1e42 0%, #080c18 65%);
+  --glow-intensity: 0.35;
+  --border-radius-modifier: 8px;
 }
+
 
 /* ── Global reset & base ──────────────────────────────────────── */
 * {
@@ -129,25 +138,25 @@ body {
 
 /* ── Overrides for built-in elements to prevent white backgrounds ────────────────── */
 input, textarea {
-  background: #181a24 !important;
-  border: 1px solid #2f3344 !important;
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
   color: var(--text) !important;
 }
 
 select {
-  background: #181a24 !important;
-  border: 1px solid #2f3344 !important;
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
   color: var(--text) !important;
   color-scheme: dark;
 }
 
 select option {
-  background: #181a24;
+  background: var(--surface);
   color: var(--text);
 }
 
 select optgroup {
-  background: #0d0e17;
+  background: var(--bg);
   color: var(--accent);
 }
 
@@ -161,3 +170,19 @@ input::placeholder, textarea::placeholder {
   color: var(--text-muted) !important;
   opacity: 0.5;
 }
+
+/* Glowing focus states — theme-aware */
+.input-bar:focus-within {
+  box-shadow: 0 0 0 1.5px var(--accent), 0 0 18px var(--accent-glow), 0 0 40px var(--accent-glow);
+}
+
+button:focus-visible,
+button:hover {
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.btn-send:hover,
+.btn-send:focus-visible {
+  box-shadow: 0 0 14px var(--accent-glow), 0 0 28px var(--accent-glow);
+}
+

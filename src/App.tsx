@@ -1313,40 +1313,6 @@ function App() {
           </div>
         </div>
         <div className="header-actions">
-          <div className="theme-switcher" title="Theme">
-            <button
-              className={`theme-btn${settingsTheme === 'default' ? ' active' : ''}`}
-              onClick={() => { setSettingsTheme('default'); persistSetting('theme', 'default') }}
-              title="Default — Balanced dark"
-              aria-label="Default theme"
-            >
-              <span className="theme-btn-swatch theme-btn-swatch--default" />
-            </button>
-            <button
-              className={`theme-btn${settingsTheme === 'obsidian' ? ' active' : ''}`}
-              onClick={() => { setSettingsTheme('obsidian'); persistSetting('theme', 'obsidian') }}
-              title="Obsidian — Magenta & teal"
-              aria-label="Obsidian theme"
-            >
-              <span className="theme-btn-swatch theme-btn-swatch--obsidian" />
-            </button>
-            <button
-              className={`theme-btn${settingsTheme === 'cyber' ? ' active' : ''}`}
-              onClick={() => { setSettingsTheme('cyber'); persistSetting('theme', 'cyber') }}
-              title="Cyber — Neon high-contrast"
-              aria-label="Cyber theme"
-            >
-              <span className="theme-btn-swatch theme-btn-swatch--cyber" />
-            </button>
-            <button
-              className={`theme-btn${settingsTheme === 'midnight' ? ' active' : ''}`}
-              onClick={() => { setSettingsTheme('midnight'); persistSetting('theme', 'midnight') }}
-              title="Midnight — Deep navy"
-              aria-label="Midnight theme"
-            >
-              <span className="theme-btn-swatch theme-btn-swatch--midnight" />
-            </button>
-          </div>
           <button
             className={`btn-settings${showSettings ? ' active' : ''}`}
             onClick={() => setShowSettings(!showSettings)}

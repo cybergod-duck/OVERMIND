@@ -441,34 +441,68 @@
 /* ── Input Bar ──────────────────────────────────────────────── */
 
 .input-bar {
-  padding: 24px 40px 40px;
+  padding: 4px 80px 4px 10px;
   display: flex;
   gap: 12px;
-  background: transparent;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 32px;
   align-items: center;
-  max-width: 1000px;
-  margin: 0 auto;
-  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 20px auto;
+  width: calc(100% - 40px);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.input-bar:focus-within {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow), 0 0 16px var(--accent-glow);
+  background: var(--surface-soft);
 }
 
 .input-container {
   flex: 1;
   display: flex;
   align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 32px;
-  padding: 12px 12px 12px 24px;
+  background: transparent;
+  border: none;
+  padding: 12px 12px 12px 10px;
   gap: 16px;
   transition: all 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }
 
 .input-container:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow), 0 8px 32px rgba(0, 0, 0, 0.4);
-  background: var(--surface-soft);
+  border: none;
+  box-shadow: none;
+  background: transparent;
 }
+
+.input-field {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  height: 24px;
+  line-height: 24px;
+  caret-color: var(--accent);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.input-field:focus {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 
 .btn-attach {
   background: transparent;
@@ -495,13 +529,23 @@
   flex: 1;
   background: transparent !important;
   border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   color: var(--text) !important;
   font-family: inherit;
   font-size: 14px;
-  outline: none !important;
   resize: none;
   height: 24px;
   line-height: 24px;
+  caret-color: var(--accent);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.input-field:focus {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
   box-shadow: none !important;
 }
 
