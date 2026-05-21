@@ -1,7 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
-**Last synced:** 2026-05-20 (PrivacySentinel + useProviderModels extracted)
+**Last synced:** 2026-05-21 (WelcomeOverlay + SettingsPanel extracted)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
