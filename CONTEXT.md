@@ -205,7 +205,7 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 | 4 | `<SetupPanel>` | `src/components/SetupPanel.tsx` | ✅ Done |
 | 5 | `useProviderModels` hook | `src/hooks/useProviderModels.ts` | ✅ Done |
 | 6 | `<PrivacySentinel>` | `src/components/PrivacySentinel.tsx` | ✅ Done |
-| 7 | `<WelcomeOverlay>` | `src/components/WelcomeOverlay.tsx` | ⬜ Next |
+| 7 | `<WelcomeOverlay>` | `src/components/WelcomeOverlay.tsx` | ✅ Done |
 | 8 | `<SettingsPanel>` | `src/components/SettingsPanel.tsx` | ⬜ Pending |
 | 9 | `useVault` hook | `src/hooks/useVault.ts` | ⬜ Pending |
 | 10 | `useDoctor` hook | `src/hooks/useDoctor.ts` | ⬜ Pending |

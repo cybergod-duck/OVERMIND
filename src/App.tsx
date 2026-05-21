@@ -20,6 +20,7 @@ import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
 import { SetupPanel } from './components/SetupPanel'
 import { PrivacySentinel } from './components/PrivacySentinel'
+import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { useProviderModels } from './hooks/useProviderModels'
 
 import type { Secret, Message, ToolToken, ProviderInfo, SetupPhase } from './types/vault'
@@ -228,13 +229,13 @@ function App() {
     // Build set of all valid model IDs from available options
     const validModels = new Set<string>()
     localModels.forEach(name => validModels.add(`ollama:${name}`))
-    Object.entries(CLOUD_MODELS).forEach(([provider, models]) => {
-      if (secrets.some(s => s.type === 'api_key' && s.provider === provider)) {
-        models.forEach(m => validModels.add(`${provider}:${m}`))
-      }
+    
+    Object.entries(providerModels).forEach(([provider, models]) => {
+      models.forEach(m => validModels.add(`${provider}:${m}`))
     })
+    
     if (secrets.some(s => s.type === 'api_key' && s.provider === 'openrouter')) {
-      ;(providerModels['openrouter'] || OPENROUTER_MODELS.map(m => m.route)).forEach(id => {
+      (providerModels['openrouter'] || []).forEach(id => {
         validModels.add(`openrouter:${id}`)
       })
     }
@@ -260,19 +261,16 @@ function App() {
     const withKey = Object.keys(PROVIDER_CONFIG).find(
       p => p !== 'ollama' && secrets.some(s => s.type === 'api_key' && s.provider === p)
     )
-    if (withKey) {
-      const models = CLOUD_MODELS[withKey]
-      if (models?.length) {
-        setSelectedModel(`${withKey}:${models[0]}`)
-        return
-      }
+    if (withKey && providerModels[withKey]?.length > 0) {
+      setSelectedModel(`${withKey}:${providerModels[withKey][0]}`)
+      return
     }
 
     // Fallback — no Ollama detected yet, no vault keys
     if (!localModels.length && !secrets.some(s => s.type === 'api_key')) {
-      setSelectedModel('openrouter:gpt-4.1-mini')
+      setSelectedModel('openrouter:openai/gpt-4o-mini')
     }
-  }, [localModels, secrets, selectedModel])
+  }, [localModels, secrets, selectedModel, providerModels])
 
   // Persist secrets
   useEffect(() => {
@@ -1287,71 +1285,7 @@ function App() {
   return (
     <div className="overmind">
       {/* ── Welcome overlay (first-run onboarding) ────────────── */}
-      {showWelcome && (
-        <div className="welcome-overlay">
-          <div className="welcome-panel">
-            <div className="welcome-header">
-              <div className="welcome-logo-icon">◆</div>
-              <div className="welcome-title">Overmind</div>
-            </div>
-            <div className="welcome-subtitle">Personal AI For Your PC</div>
-
-            <div className="welcome-features">
-              <div className="welcome-feature">
-                <div className="welcome-feature-icon">💬</div>
-                <div className="welcome-feature-body">
-                  <div className="welcome-feature-title">AI Chat</div>
-                  <div className="welcome-feature-desc">Chat with local or cloud AI models. Ask questions, analyze data, get help with any task.</div>
-                </div>
-              </div>
-              <div className="welcome-feature">
-                <div className="welcome-feature-icon">🔐</div>
-                <div className="welcome-feature-body">
-                  <div className="welcome-feature-title">Vault</div>
-                  <div className="welcome-feature-desc">Securely store API keys, passwords, and secrets. Import from .env files or CSV.</div>
-                </div>
-              </div>
-              <div className="welcome-feature">
-                <div className="welcome-feature-icon">📁</div>
-                <div className="welcome-feature-body">
-                  <div className="welcome-feature-title">Watched Folders</div>
-                  <div className="welcome-feature-desc">Monitor folders for changes, analyze file structures, organize files with smart automation.</div>
-                </div>
-              </div>
-              <div className="welcome-feature">
-                <div className="welcome-feature-icon">🩺</div>
-                <div className="welcome-feature-body">
-                  <div className="welcome-feature-title">System Doctor</div>
-                  <div className="welcome-feature-desc">Diagnose network issues, clean temp files, find large files, and optimize system performance.</div>
-                </div>
-              </div>
-              <div className="welcome-feature">
-                <div className="welcome-feature-icon">🛡️</div>
-                <div className="welcome-feature-body">
-                  <div className="welcome-feature-title">Privacy Sentinel</div>
-                  <div className="welcome-feature-desc">Scan startup items, hosts file, running processes, and DNS config for privacy risks.</div>
-                </div>
-              </div>
-              <div className="welcome-feature">
-                <div className="welcome-feature-icon">🌐</div>
-                <div className="welcome-feature-body">
-                  <div className="welcome-feature-title">Browser Bridge</div>
-                  <div className="welcome-feature-desc">Connect the browser extension to bring web context into your AI conversations.</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="welcome-tip">
-              <span className="welcome-tip-icon">✦</span>
-              <span>Type <strong>help</strong> anytime to see what I can do for you.</span>
-            </div>
-
-            <button className="welcome-btn" onClick={() => setShowWelcome(false)}>
-              GET STARTED
-            </button>
-          </div>
-        </div>
-      )}
+      {showWelcome && <WelcomeOverlay onDismiss={() => setShowWelcome(false)} />}
 
       {/* ── Model Manager Overlay ──────────────────────────────── */}
       {showModelManager && (
