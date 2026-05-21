@@ -19,6 +19,7 @@ import { SYSTEM_PROMPT, PROVIDER_CONFIG, OPENROUTER_MODELS, CLOUD_MODELS, KEY_PA
 import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from './agent/toolParser'
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
 import { SystemDoctorPanel } from './components/SystemDoctorPanel'
+import { ChatPanel } from './components/ChatPanel'
 import { SetupPanel } from './components/SetupPanel'
 import { PrivacySentinel } from './components/PrivacySentinel'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
@@ -1814,68 +1815,15 @@ function App() {
 
         </aside>
 
-        <div className="content">
-          <div className="chat" ref={chatRef}>
-            {messages.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-logo">
-                  <div className="empty-logo-icon">◆</div>
-                  <div className="empty-logo-text">Overmind</div>
-                </div>
-                <div className="empty-tagline">Personal AI For Your PC</div>
-              </div>
-            ) : (
-              messages.map((m, i) => (
-                <div key={i} className={`msg msg-${m.role}`}>
-                  {m.role === 'assistant' && <div className="msg-avatar">◆</div>}
-                  <div className="msg-body">
-                    {m.role !== 'user' && (
-                      <div className="msg-role-label">
-                        {m.role === 'assistant' ? 'Overmind' : m.role.toUpperCase()}
-                      </div>
-                    )}
-                    <div className="msg-content">{m.content}</div>
-                  </div>
-                </div>
-              ))
-            )}
-            {loading && (
-              <div className="thinking-indicator-simple">
-                <span className="thinking-icon">◆</span>
-                <span className="thinking-text">Thinking {(elapsedTime / 1000).toFixed(1)}s</span>
-              </div>
-            )}
-          </div>
-
-          <div className="input-bar">
-            <div className="input-container">
-              <button className="btn-attach" title="Attach file">
-                <Plus size={16} />
-              </button>
-              <textarea
-                className="input-field"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                placeholder="Message Overmind..."
-                disabled={loading}
-                rows={1}
-              />
-              <button
-                className="btn-send"
-                onClick={sendMessage}
-                disabled={loading || !input.trim()}
-              >
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <ChatPanel
+          messages={messages}
+          loading={loading}
+          elapsedTime={elapsedTime}
+          input={input}
+          setInput={setInput}
+          onSendMessage={sendMessage}
+          chatRef={chatRef}
+        />
       </div>
 
       <footer className="footer">
