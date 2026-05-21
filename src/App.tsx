@@ -21,6 +21,7 @@ import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps
 import { SetupPanel } from './components/SetupPanel'
 import { PrivacySentinel } from './components/PrivacySentinel'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
+import { SettingsPanel } from './components/SettingsPanel'
 import { useProviderModels } from './hooks/useProviderModels'
 
 import type { Secret, Message, ToolToken, ProviderInfo, SetupPhase } from './types/vault'
@@ -1388,123 +1389,26 @@ function App() {
 
           {/* Settings panel */}
           {showSettings && (
-            <div className="settings-panel">
-              <div className="settings-label">OLLAMA_HOST</div>
-              <input
-                className="settings-input"
-                placeholder="http://localhost:11434"
-                value={ollamaHost}
-                onChange={e => {
-                  setOllamaHost(e.target.value)
-                  persistSetting('ollamaHost', e.target.value)
-                }}
-              />
-
-              <div className="settings-label">DEFAULT_MODEL</div>
-              <input
-                className="settings-input"
-                placeholder="e.g. ollama:dolphin-llama3:latest"
-                value={settingsDefaultModel}
-                onChange={e => {
-                  setSettingsDefaultModel(e.target.value)
-                  persistSetting('defaultModel', e.target.value)
-                }}
-              />
-
-              <div className="settings-label">CUSTOM_SYSTEM_PROMPT</div>
-              <textarea
-                className="settings-textarea"
-                placeholder="Instructions prepended before the default Overmind system prompt…"
-                value={customPrompt}
-                onChange={e => {
-                  setCustomPrompt(e.target.value)
-                  setSettingsSystemPrompt(e.target.value)
-                  persistSetting('systemPrompt', e.target.value)
-                }}
-                rows={4}
-              />
-
-              <div className="settings-row">
-                <label className="settings-toggle-label">
-                  <span>AGENT_LOOP_ENABLED</span>
-                  <input
-                    type="checkbox"
-                    className="settings-toggle"
-                    checked={agentLoopEnabled}
-                    onChange={e => {
-                      setAgentLoopEnabled(e.target.checked)
-                      persistSetting('agentLoopEnabled', e.target.checked)
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div className="settings-row">
-                <label className="settings-toggle-label">
-                  <span>AUTO_DIAGNOSTICS</span>
-                  <input
-                    type="checkbox"
-                    className="settings-toggle"
-                    checked={autoDiagnostics}
-                    onChange={e => {
-                      setAutoDiagnostics(e.target.checked)
-                      persistSetting('autoDiagnostics', e.target.checked)
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div className="settings-row">
-                <label className="settings-toggle-label">
-                  <span>AUTO_ANALYZE_FOLDERS</span>
-                  <input
-                    type="checkbox"
-                    className="settings-toggle"
-                    checked={autoAnalyzeWatched}
-                    onChange={e => {
-                      setAutoAnalyzeWatched(e.target.checked)
-                      persistSetting('autoAnalyzeWatched', e.target.checked)
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div className="settings-label">MAX_CONTEXT_MESSAGES</div>
-              <input
-                className="settings-input"
-                type="number"
-                min={1}
-                max={200}
-                value={maxContextMessages}
-                onChange={e => {
-                  const val = parseInt(e.target.value, 10) || 50
-                  setMaxContextMessages(val)
-                  persistSetting('maxContextMessages', val)
-                }}
-              />
-
-              <div className="settings-label">THEME</div>
-              <select
-                className="settings-input"
-                value={settingsTheme}
-                onChange={e => {
-                  setSettingsTheme(e.target.value)
-                  persistSetting('theme', e.target.value)
-                }}
-              >
-                <option value="default">Default — Balanced dark</option>
-                <option value="obsidian">Obsidian — Magenta & teal</option>
-                <option value="cyber">Cyber — Neon high-contrast</option>
-                <option value="midnight">Midnight — Deep navy</option>
-              </select>
-
-              {/* ── RE-RUN SETUP ──────────────────────────── */}
-              <div className="settings-row" style={{ marginTop: 8 }}>
-                <button className="setup-btn setup-btn-secondary" onClick={handleRerunSetup} style={{ width: '100%' }}>
-                  <Terminal size={12} /> RE-RUN SETUP
-                </button>
-              </div>
-            </div>
+            <SettingsPanel
+              ollamaHost={ollamaHost}
+              settingsDefaultModel={settingsDefaultModel}
+              customPrompt={customPrompt}
+              agentLoopEnabled={agentLoopEnabled}
+              autoDiagnostics={autoDiagnostics}
+              autoAnalyzeWatched={autoAnalyzeWatched}
+              maxContextMessages={maxContextMessages}
+              settingsTheme={settingsTheme}
+              onOllamaHostChange={setOllamaHost}
+              onDefaultModelChange={setSettingsDefaultModel}
+              onCustomPromptChange={setCustomPrompt}
+              onAgentLoopChange={setAgentLoopEnabled}
+              onAutoDiagnosticsChange={setAutoDiagnostics}
+              onAutoAnalyzeWatchedChange={setAutoAnalyzeWatched}
+              onMaxContextMessagesChange={setMaxContextMessages}
+              onThemeChange={setSettingsTheme}
+              onRerunSetup={handleRerunSetup}
+              persistSetting={persistSetting}
+            />
           )}
         </div>
       </header>
