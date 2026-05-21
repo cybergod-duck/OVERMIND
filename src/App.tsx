@@ -22,6 +22,7 @@ import { SetupPanel } from './components/SetupPanel'
 import { PrivacySentinel } from './components/PrivacySentinel'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { SettingsPanel } from './components/SettingsPanel'
+import { VaultSection } from './components/VaultSection'
 import { useProviderModels } from './hooks/useProviderModels'
 
 import type { Secret, Message, ToolToken, ProviderInfo, SetupPhase } from './types/vault'
