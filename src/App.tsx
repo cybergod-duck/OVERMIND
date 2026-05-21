@@ -20,6 +20,7 @@ import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from
 import { sendMessage as agentSendMessage, callAI as agentCallAI, type CallAIDeps, type SendMessageDeps } from './agent/agentLoop'
 import { SystemDoctorPanel } from './components/SystemDoctorPanel'
 import { ChatPanel } from './components/ChatPanel'
+import { ModelSelector } from './components/ModelSelector'
 import { SetupPanel } from './components/SetupPanel'
 import { PrivacySentinel } from './components/PrivacySentinel'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
@@ -1954,41 +1955,19 @@ function CustomModelSelect({
   }, {} as Record<string, typeof options>)
 
   return (
-    <div className="custom-select-container" ref={containerRef}>
-      <button className="model-select-trigger" onClick={() => setIsOpen(!isOpen)}>
-        <span className="selected-model-name">{getDisplayLabel(selectedModel)}</span>
-        <ChevronDown size={12} />
-      </button>
-
-      {isOpen && (
-        <div className="custom-select-dropdown">
-          <div className="custom-select-list">
-            {Object.entries(grouped).map(([provider, opts]) => (
-              <div key={provider} className="custom-select-group">
-                <div className="custom-select-group-title" style={{ color: PROVIDER_CONFIG[provider]?.color }}>
-                  {PROVIDER_CONFIG[provider]?.label || provider.toUpperCase()}
-                </div>
-                {opts.map(opt => (
-                  <div 
-                    key={opt.id} 
-                    className={`custom-select-option ${opt.id === selectedModel ? 'active' : ''}`}
-                    onClick={() => handleSelect(opt.id)}
-                  >
-                    {opt.label}
-                  </div>
-                ))}
-              </div>
-            ))}
-            {options.length === 0 && (
-              <div className="custom-select-empty">No favorites. Click Manage.</div>
-            )}
-          </div>
-          <button className="btn-manage-models" onClick={() => { onOpenManager(); setIsOpen(false); }}>
-            <Settings size={12} /> MANAGE MODELS...
-          </button>
-        </div>
-      )}
-    </div>
+        <ModelSelector
+          selectedModel={selectedModel}
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          favoriteModels={Array.from(favoriteModels)}
+          localModels={localModels}
+          secrets={secrets}
+          providerModels={providerModels}
+          onSelect={handleSelect}
+          onOpenManager={onOpenManager}
+          getDisplayLabel={getDisplayLabel}
+          containerRef={containerRef}
+        />
   )
 }
 

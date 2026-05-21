@@ -1,7 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
-**Last synced:** 2026-05-21 (ChatPanel extracted)
+**Last synced:** 2026-05-21 (ModelSelector extracted, color-scheme fix applied)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
@@ -212,6 +212,7 @@ Theme is persisted via `electron-store` under key `theme`. Switching is instant 
 | 11 | `<VaultSection>` | `src/components/VaultSection.tsx` | ⬜ Pending |
 | 12 | `<SystemDoctorPanel>` | `src/components/SystemDoctorPanel.tsx` | ✅ Done |
 | 13 | `<ChatPanel>` | `src/components/ChatPanel.tsx` | ✅ Done |
+| 14 | `<ModelSelector>` | `src/components/ModelSelector.tsx` | ✅ Done |
 
 ### Other TODOs
 - **`agentLoop.ts`** — Verified clean (2026-05-20). `anthropic` and `moonshot` providers use dedicated IPC bridges; generic `fetchFn` path correctly serves all other providers. No dead code.
