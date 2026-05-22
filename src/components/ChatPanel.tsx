@@ -19,10 +19,10 @@ export function ChatPanel(props: ChatPanelProps) {
       <div className="chat" ref={props.chatRef}>
         {props.messages.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-logo">
-              <div className="empty-logo-icon">◆</div>
-              <div className="empty-logo-text">Overmind</div>
+            <div className="hero-logo">
+              <img src="../../assets/icon.png" alt="Overmind" draggable={false} />
             </div>
+            <div className="empty-logo-text">Overmind</div>
             <div className="empty-tagline">Personal AI For Your PC</div>
           </div>
         ) : (

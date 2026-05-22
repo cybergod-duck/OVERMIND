@@ -116,6 +116,7 @@ function createWindow() {
   win.removeMenu()
   // win.webContents.openDevTools()
   win.loadURL('http://localhost:5173')
+  win.webContents.openDevTools()
 }
 
 // ── IPC Handlers ──────────────────────────────────────────────

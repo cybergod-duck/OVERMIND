@@ -18,10 +18,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: transparent;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   gap: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .header-left {
@@ -30,19 +30,17 @@
   gap: 12px;
 }
 
-.logo-icon {
-  font-size: 20px;
-  color: var(--accent);
-  text-shadow: 0 0 16px var(--accent-glow);
-  line-height: 1;
+.header-logo-mark {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .logo {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: var(--text);
-  background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+  background: linear-gradient(to right, #ffffff 0%, var(--accent) 45%, var(--accent-secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -130,9 +128,9 @@
   flex-shrink: 0;
 }
 
-.theme-btn-swatch--default    { background: #3b82f6; }
-.theme-btn-swatch--cyber      { background: #10b981; }
-.theme-btn-swatch--obsidian   { background: #a855f7; }
+.theme-btn-swatch--default    { background: #a78bfa; }
+.theme-btn-swatch--cyber      { background: #00e5ff; }
+.theme-btn-swatch--obsidian   { background: #14b8a6; }
 .theme-btn-swatch--midnight   { background: #f59e0b; }
 
 /* ── Header Actions ─────────────────────────────────────────── */
@@ -218,7 +216,7 @@
 
 .sidebar {
   width: var(--sidebar-w);
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -236,6 +234,7 @@
   padding: 4px;
   gap: 4px;
   margin-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
 }
 
 .sidebar-tab {
@@ -380,7 +379,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: transparent;
+  background: var(--bg-gradient);
   position: relative;
 }
 
@@ -393,39 +392,25 @@
   gap: 20px;
 }
 
-.empty-logo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.empty-logo-icon {
-  width: 96px;
-  height: 96px;
-  background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%);
-  border: 1px solid var(--accent);
-  border-radius: 20px;
+.hero-logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
-  color: var(--accent);
-  box-shadow: 0 0 60px var(--accent-glow), inset 0 0 30px var(--accent-soft);
-  transform: rotate(45deg);
   margin-bottom: 24px;
 }
 
-.empty-logo-icon > * {
-  transform: rotate(-45deg);
+.hero-logo img {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px var(--accent-glow));
 }
 
 .empty-logo-text {
   font-size: 48px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: var(--text);
-  background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+  background: linear-gradient(to right, #ffffff 0%, var(--accent) 45%, var(--accent-secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -703,7 +688,7 @@
   top: calc(100% + 12px);
   right: 0;
   width: 320px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;

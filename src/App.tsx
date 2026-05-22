@@ -1327,7 +1327,7 @@ function App() {
 
       <header className="header">
         <div className="header-left">
-          <div className="logo-icon">◆</div>
+          <img src="../../assets/icon.png" alt="" className="header-logo-mark" draggable={false} />
           <div className="logo">Overmind</div>
         </div>
         <div className="header-center">
