@@ -1,6 +1,7 @@
 node_modules/
 dist/
 overmind.env
+overmind-secrets.json
 *.log
 .DS_Store
 Thumbs.db
