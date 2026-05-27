@@ -589,6 +589,149 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Image Messages ──────────────────────────────────────────── */
+
+.msg-image-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 480px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.msg-image-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 24px var(--accent-glow);
+}
+
+.msg-image-prompt {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msg-image-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0f;
+  padding: 8px;
+}
+
+.msg-image {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  object-fit: contain;
+  display: block;
+}
+
+.msg-image-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+
+.msg-image-download:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── Image Input Row (inline prompt input) ───────────────────── */
+
+.image-input-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-input-field {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-family: inherit;
+  font-size: 14px;
+  height: 24px;
+  line-height: 24px;
+  caret-color: var(--accent);
+}
+
+.image-input-field::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6;
+}
+
+.btn-image-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-image-cancel:hover {
+  color: #ff4757;
+  border-color: #ff4757;
+  background: rgba(255, 71, 87, 0.1);
+}
+
+.btn-image-gen {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-image-gen:hover {
+  color: var(--accent-secondary, #d94a8f);
+  border-color: var(--accent-secondary, #d94a8f);
+  background: rgba(217, 74, 143, 0.1);
+  box-shadow: 0 0 12px rgba(217, 74, 143, 0.3);
+}
+
+.btn-image-gen:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .msg-user {
   align-self: flex-end;
   flex-direction: row-reverse;

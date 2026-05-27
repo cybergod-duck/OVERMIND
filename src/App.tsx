@@ -13,7 +13,7 @@ import {
   type NormalizeResult,
 } from './utils/vaultTools'
 import { generateRemediationActions, generateLabel } from './utils/privacyUtils'
-import { _analysisCache, AGENT_TOOLS, setLastPrivacyResult } from './agent/agentTools'
+import { _analysisCache, AGENT_TOOLS, setLastPrivacyResult, setImageGenCallback } from './agent/agentTools'
 import { TOOL_SYSTEM_SUFFIX } from './agent/systemPrompt'
 import { SYSTEM_PROMPT, PROVIDER_CONFIG, OPENROUTER_MODELS, CLOUD_MODELS, KEY_PATTERNS } from './constants/providers'
 import { parseToolCall, stripToolCallJSON, parseToolTokens, TOOL_TOKEN_RE } from './agent/toolParser'
@@ -225,6 +225,27 @@ function App() {
   useEffect(() => {
     const saved = localStorage.getItem('overmind_v4_secrets')
     if (saved) setSecrets(JSON.parse(saved))
+  }, [])
+
+  // Expose secrets on window for agent tools (image generation, etc.)
+  useEffect(() => {
+    (window as any).__overmindSecrets = secrets
+  }, [secrets])
+
+  // Set up image generation callback — when the AI tool generates an image,
+  // it calls this to add the image message to the chat
+  useEffect(() => {
+    setImageGenCallback((result) => {
+      // This is called from the agent tool context; we add the image message
+      // via the setMessages function which is captured in the closure
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Generated image for: "${result.prompt}"`,
+        imageUrl: result.imageUrl,
+        imagePrompt: result.prompt,
+      }])
+    })
+    return () => setImageGenCallback(null)
   }, [])
 
   // Load saved selected model
@@ -893,6 +914,53 @@ function App() {
       setInput, setMessages, setLoading, setDoctorLog, log,
     }
     return agentSendMessage(deps)
+  }
+
+  // ── Image Generation ─────────────────────────────────────────
+  const handleGenerateImage = async (prompt: string) => {
+    log(`IMAGE_GEN: "${prompt.slice(0, 60)}..."`)
+    setMessages(prev => [...prev, { role: 'user', content: `/image ${prompt}` }])
+    setLoading(true)
+
+    try {
+      const { generateImage } = await import('./utils/imageGen')
+      const xaiKey = secrets.find(s => s.provider === 'xai')?.value
+
+      if (!xaiKey) {
+        setMessages(prev => [...prev, {
+          role: 'error',
+          content: 'No xAI/Grok API key found in vault. Add an XAI key to use image generation.',
+        }])
+        setLoading(false)
+        return
+      }
+
+      const result = await generateImage({ prompt, apiKey: xaiKey, provider: 'xai' })
+
+      if (result.success && result.imageUrl) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Generated image for: "${prompt}"`,
+          imageUrl: result.imageUrl,
+          imagePrompt: prompt,
+        }])
+        log(`IMAGE_GEN_SUCCESS: ${result.imageUrl.slice(0, 60)}...`)
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'error',
+          content: `Image generation failed: ${result.error || 'Unknown error'}`,
+        }])
+        log(`IMAGE_GEN_ERROR: ${result.error}`)
+      }
+    } catch (err: any) {
+      setMessages(prev => [...prev, {
+        role: 'error',
+        content: `Image generation error: ${err.message}`,
+      }])
+      log(`IMAGE_GEN_ERROR: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // ── File Attachment ──────────────────────────────────────────
@@ -1817,6 +1885,7 @@ function App() {
           setInput={setInput}
           onSendMessage={sendMessage}
           onAttachFile={handleAttachFile}
+          onGenerateImage={handleGenerateImage}
           chatRef={chatRef}
         />
       </div>

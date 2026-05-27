@@ -3,6 +3,13 @@
 export let _lastPrivacyResult: any = null
 export let _analysisCache: Record<string, { summary: any; timestamp: number }> = {}
 
+// ── Image generation state ───────────────────────────────────────
+export let _imageGenCallback: ((result: { prompt: string; imageUrl: string; base64?: string }) => void) | null = null
+
+export function setImageGenCallback(cb: typeof _imageGenCallback): void {
+  _imageGenCallback = cb
+}
+
 /** Setter so App.tsx can update _lastPrivacyResult via import (ES module imports are read-only for assignment) */
 export function setLastPrivacyResult(result: any): void {
   _lastPrivacyResult = result
@@ -478,5 +485,32 @@ export const AGENT_TOOLS = {
   },
   doctorSystemInfo: async () => {
     return (window as any).doctorAPI?.systemInfo?.()
+  },
+
+  // ── Image Generation Tool ──────────────────────────────────
+  generateImage: async (args: { prompt: string; provider?: string; model?: string }) => {
+    if (!args.prompt) return { error: 'prompt is required' }
+
+    // Find the xAI/Grok API key from secrets
+    const secrets: { provider?: string; value: string }[] = (window as any).__overmindSecrets ?? []
+    const apiKey = secrets.find(s => s.provider === 'xai')?.value
+
+    if (!apiKey) {
+      return { error: 'No xAI/Grok API key found in vault. Add an XAI key to use image generation.' }
+    }
+
+    const { generateImage: genImg } = await import('../utils/imageGen')
+    const result = await genImg({
+      prompt: args.prompt,
+      apiKey,
+      provider: args.provider || 'xai',
+      model: args.model,
+    })
+
+    if (result.success && result.imageUrl && _imageGenCallback) {
+      _imageGenCallback({ prompt: args.prompt, imageUrl: result.imageUrl, base64: result.base64 })
+    }
+
+    return result
   },
 } as const

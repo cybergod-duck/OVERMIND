@@ -108,6 +108,7 @@ RULE 1 — Your ENTIRE response MUST be EXACTLY one of these:
   {"tool":"doctorKillProcess","args":{"pid":1234}}
   {"tool":"doctorStartupItems","args":{}}
   {"tool":"doctorSystemInfo","args":{}}
+  {"tool":"generateImage","args":{"prompt":"a cat wearing a hat"}}
   or any other tool from AGENT_TOOLS.
 
 RULE 2 — NEVER output any other JSON format. In particular, these are FORBIDDEN:
@@ -149,6 +150,7 @@ Available tools:
 - watchedFoldersDeleteFile — args: { filePath: string }
 - watchedFoldersCreateFolder — args: { folderPath: string }
 - watchedFoldersOrganizeSmart — args: { folderPath: string }
+- generateImage — args: { prompt: string; provider?: string; model?: string } — Generate an image using AI (requires xAI/Grok API key in vault). Use this when the user asks you to create, generate, or draw an image.
 
 ` + `
 ╔══════════════════════════════════════════════════════════════╗

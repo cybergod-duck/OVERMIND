@@ -12,6 +12,8 @@ export interface Secret {
 export interface Message {
   role: 'user' | 'assistant' | 'system' | 'error' | 'agent'
   content: string
+  imageUrl?: string
+  imagePrompt?: string
 }
 
 export type ToolToken =

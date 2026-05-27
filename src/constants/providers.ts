@@ -37,6 +37,7 @@ export const PROVIDER_CONFIG: Record<string, ProviderInfo> = {
   deepseek:    { label: 'DEEPSEEK',    color: '#2a5a7f', baseUrl: 'https://api.deepseek.com/v1' },
   groq:        { label: 'GROQ',        color: '#8f4a1a', baseUrl: 'https://api.groq.com/openai/v1' },
   moonshot:    { label: 'MOONSHOT',    color: '#1a6b4a', baseUrl: 'https://api.moonshot.ai/v1' },
+  image:       { label: 'IMAGE GEN',   color: '#d94a8f', baseUrl: 'https://api.x.ai/v1' },
 }
 
 // ── OpenRouter fallback model list ────────────────────────────────
