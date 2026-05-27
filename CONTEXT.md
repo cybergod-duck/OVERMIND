@@ -1,7 +1,7 @@
 # Overmind — Project Context
 
 **Version:** 4.1.0
-**Last synced:** 2026-05-21 (ModelSelector extracted, color-scheme fix applied)
+**Last synced:** 2026-05-22 (UI theme overhaul, high-contrast background tints, accent color refinements, Obsidian teal/fuchsia primary/secondary swap, input container fix)
 **Author:** Overmind
 **Description:** Personal AI For Your PC — local-first AI client with encrypted vault, multi-provider routing, system diagnostics, multi-theme UI, and first-run wizard.
 
